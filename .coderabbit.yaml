@@ -1,0 +1,14 @@
+language: "es"
+
+reviews:
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+      - develop
+  review_profile: "chill"
+  request_changes_workflow: true
+
+chat:
+  auto_reply: true
