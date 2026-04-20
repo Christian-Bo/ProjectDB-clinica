@@ -4,5 +4,5 @@ namespace Clinica.Application.Contracts;
 // Define aqui los metodos que debe implementar AuthService
 public interface IAuthService
 {
-    // TODO: agregar metodos
+    // TODO: agregar metodos......
 }
