@@ -1,12 +1,9 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
-using System.Data;
-// Descomenta el driver que uses:
-using MySqlConnector;
-// using Microsoft.Data.SqlClient;
 
 namespace Clinica.Infrastructure.Database;
 
-// Conexion ADO.NET pura — sin ORM, sin migraciones
+// Conexion ADO.NET pura a SQL Server — sin ORM, sin migraciones.
 public sealed class DatabaseConnection
 {
     private readonly string _connectionString;
@@ -15,13 +12,15 @@ public sealed class DatabaseConnection
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("ConnectionString 'DefaultConnection' no configurada.");
+
+        if (string.IsNullOrWhiteSpace(_connectionString))
+        {
+            throw new InvalidOperationException("La ConnectionString 'DefaultConnection' esta vacia.");
+        }
     }
 
-    public IDbConnection CreateConnection()
+    public SqlConnection CreateConnection()
     {
-        // MySQL:
-        return new MySqlConnection(_connectionString);
-        // SQL Server (comenta la linea de arriba y descomenta esta):
-        // return new SqlConnection(_connectionString);
+        return new SqlConnection(_connectionString);
     }
 }
