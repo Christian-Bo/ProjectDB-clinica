@@ -8,6 +8,7 @@ namespace Clinica.Infrastructure;
 
 // -----------------------------------------------------------------------------
 // Registro centralizado de infraestructura.
+// Llama AddInfrastructure() desde Program.cs
 // -----------------------------------------------------------------------------
 public static class DependencyInjection
 {
