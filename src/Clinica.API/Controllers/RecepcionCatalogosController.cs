@@ -1,15 +1,11 @@
 using Clinica.Application.Contracts;
+using Clinica.Application.Models.Common;
+using Clinica.Application.Models.Tickets;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Clinica.API.Controllers;
 
-// -----------------------------------------------------------------------------
-// Endpoints de apoyo para formularios y combos del frontend.
-// La idea es que el usuario vea listas claras con nombres y etiquetas amigables,
-// en lugar de trabajar manualmente con ids sueltos.
-// -----------------------------------------------------------------------------
-[AllowAnonymous]
 [Route("api/recepcion/catalogos")]
 public sealed class RecepcionCatalogosController : BaseController
 {
@@ -20,6 +16,7 @@ public sealed class RecepcionCatalogosController : BaseController
         _ticketQueueService = ticketQueueService;
     }
 
+    [AllowAnonymous]
     [HttpGet("sedes")]
     public async Task<IActionResult> Sedes(CancellationToken cancellationToken)
     {
@@ -27,6 +24,7 @@ public sealed class RecepcionCatalogosController : BaseController
         return ToActionResult(result);
     }
 
+    [AllowAnonymous]
     [HttpGet("servicios")]
     public async Task<IActionResult> Servicios([FromQuery] int? sedeId, CancellationToken cancellationToken)
     {
@@ -45,10 +43,28 @@ public sealed class RecepcionCatalogosController : BaseController
     }
 
     [HttpGet("pacientes")]
-    public async Task<IActionResult> Pacientes([FromQuery] string? texto, CancellationToken cancellationToken)
+    public async Task<IActionResult> Pacientes(
+        [FromQuery] string? texto,
+        [FromQuery] int limit = 50,
+        CancellationToken cancellationToken = default)
     {
+        var normalizedLimit = Math.Clamp(limit, 1, 100);
         var result = await _ticketQueueService.GetPatientsAsync(texto, cancellationToken);
-        return ToActionResult(result);
+
+        if (!result.Success || result.Data is null)
+        {
+            return ToActionResult(result);
+        }
+
+        var limitedData = result.Data.Take(normalizedLimit).ToList();
+
+        return ToActionResult(new ServiceOperationResult<IReadOnlyList<PatientSelectionDto>>
+        {
+            HttpStatus = result.HttpStatus,
+            Code = result.Code,
+            Message = result.Message,
+            Data = limitedData
+        });
     }
 
     [HttpGet("citas-confirmadas")]
@@ -58,10 +74,16 @@ public sealed class RecepcionCatalogosController : BaseController
         [FromQuery] string? texto,
         CancellationToken cancellationToken)
     {
-        var result = await _ticketQueueService.GetConfirmedAppointmentsAsync(sedeId, servicioId, texto, cancellationToken);
+        var result = await _ticketQueueService.GetConfirmedAppointmentsAsync(
+            sedeId,
+            servicioId,
+            texto,
+            cancellationToken);
+
         return ToActionResult(result);
     }
 
+    [AllowAnonymous]
     [HttpGet("prioridades-ticket")]
     public async Task<IActionResult> PrioridadesTicket(CancellationToken cancellationToken)
     {
@@ -69,6 +91,7 @@ public sealed class RecepcionCatalogosController : BaseController
         return ToActionResult(result);
     }
 
+    [AllowAnonymous]
     [HttpGet("estados-ticket")]
     public async Task<IActionResult> EstadosTicket(CancellationToken cancellationToken)
     {

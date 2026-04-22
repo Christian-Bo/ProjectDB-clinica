@@ -1,16 +1,12 @@
 using System.Security.Claims;
 using Clinica.Application.Models.Common;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Clinica.API.Controllers;
 
-// -----------------------------------------------------------------------------
-// Controlador base.
-// Aqui centralizamos helpers utiles para todos los controladores:
-// - Leer Idempotency-Key.
-// - Resolver UsuarioId desde claims autenticados o fallback de pruebas.
-// - Enviar respuestas uniformes: ok, code, message y data.
-// -----------------------------------------------------------------------------
 [ApiController]
 [Produces("application/json")]
 public abstract class BaseController : ControllerBase
@@ -34,6 +30,7 @@ public abstract class BaseController : ControllerBase
                 code = "IDEMPOTENCY_KEY_INVALIDA",
                 message = "El header Idempotency-Key debe ser un GUID valido."
             });
+
             return false;
         }
 
@@ -41,12 +38,6 @@ public abstract class BaseController : ControllerBase
         return true;
     }
 
-    // -------------------------------------------------------------------------
-    // Regla de seguridad:
-    // 1) Si el usuario esta autenticado, se confia primero en sus claims.
-    // 2) Solo si NO esta autenticado, se permite fallback desde body o header
-    //    para pruebas manuales en Postman mientras el modulo auth no esta listo.
-    // -------------------------------------------------------------------------
     protected int? ResolveUserId(int? bodyUserId = null)
     {
         var isAuthenticated = User?.Identity?.IsAuthenticated == true;
@@ -60,7 +51,7 @@ public abstract class BaseController : ControllerBase
             return claimUserId;
         }
 
-        if (!isAuthenticated)
+        if (!isAuthenticated && AllowUnauthenticatedUserFallback())
         {
             if (bodyUserId.HasValue && bodyUserId.Value > 0)
             {
@@ -87,5 +78,23 @@ public abstract class BaseController : ControllerBase
             message = result.Message,
             data = result.Data
         });
+    }
+
+    private bool AllowUnauthenticatedUserFallback()
+    {
+        var services = HttpContext?.RequestServices;
+        if (services is null)
+        {
+            return false;
+        }
+
+        var hostEnvironment = services.GetService<IHostEnvironment>();
+        if (hostEnvironment?.IsDevelopment() == true)
+        {
+            return true;
+        }
+
+        var configuration = services.GetService<IConfiguration>();
+        return bool.TryParse(configuration?["AllowUnauthenticatedUserFallback"], out var enabled) && enabled;
     }
 }

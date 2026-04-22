@@ -3,6 +3,7 @@ using Clinica.Application.Models;
 using Clinica.Infrastructure.Database;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Clinica.Infrastructure.Services;
 
@@ -10,11 +11,16 @@ public sealed class DatabaseHealthService : IDatabaseHealthService
 {
     private readonly DatabaseConnection _databaseConnection;
     private readonly IHostEnvironment _hostEnvironment;
+    private readonly ILogger<DatabaseHealthService> _logger;
 
-    public DatabaseHealthService(DatabaseConnection databaseConnection, IHostEnvironment hostEnvironment)
+    public DatabaseHealthService(
+        DatabaseConnection databaseConnection,
+        IHostEnvironment hostEnvironment,
+        ILogger<DatabaseHealthService> logger)
     {
         _databaseConnection = databaseConnection;
         _hostEnvironment = hostEnvironment;
+        _logger = logger;
     }
 
     public async Task<DatabaseHealthResult> CheckAsync(CancellationToken cancellationToken = default)
@@ -42,21 +48,30 @@ public sealed class DatabaseHealthService : IDatabaseHealthService
                 };
             }
 
+            var serverUtcNowOrdinal = reader.GetOrdinal("ServerUtcNow");
+            var serverUtcNow = reader.IsDBNull(serverUtcNowOrdinal)
+                ? (DateTime?)null
+                : reader.GetDateTime(serverUtcNowOrdinal);
+
             return new DatabaseHealthResult
             {
                 IsSuccess = true,
                 DatabaseName = reader["DatabaseName"]?.ToString(),
-                ServerUtcNow = reader["ServerUtcNow"] as DateTime?,
+                ServerUtcNow = serverUtcNow,
                 DataSource = reader["DataSource"]?.ToString(),
                 EnvironmentName = _hostEnvironment.EnvironmentName
             };
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Database health check failed");
+
             return new DatabaseHealthResult
             {
                 IsSuccess = false,
-                ErrorMessage = ex.Message,
+                ErrorMessage = _hostEnvironment.IsDevelopment()
+                    ? ex.Message
+                    : "Database connectivity error",
                 EnvironmentName = _hostEnvironment.EnvironmentName
             };
         }

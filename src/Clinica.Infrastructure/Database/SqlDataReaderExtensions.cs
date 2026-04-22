@@ -2,10 +2,6 @@ using Microsoft.Data.SqlClient;
 
 namespace Clinica.Infrastructure.Database;
 
-// -----------------------------------------------------------------------------
-// Helpers pequeños para lectura segura del SqlDataReader.
-// Evitan mucho codigo repetido al mapear columnas opcionales.
-// -----------------------------------------------------------------------------
 internal static class SqlDataReaderExtensions
 {
     public static bool HasColumn(this SqlDataReader reader, string columnName)
@@ -84,7 +80,7 @@ internal static class SqlDataReaderExtensions
         }
 
         var ordinal = reader.GetOrdinal(columnName);
-        return !reader.IsDBNull(ordinal) && Convert.ToBoolean(reader.GetValue(ordinal));
+        return reader.IsDBNull(ordinal) ? defaultValue : Convert.ToBoolean(reader.GetValue(ordinal));
     }
 
     public static DateTime GetDateTimeOrDefault(this SqlDataReader reader, string columnName)

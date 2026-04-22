@@ -1,18 +1,9 @@
 using Clinica.Application.Contracts;
 using Clinica.Application.Models.Tickets;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Clinica.API.Controllers;
 
-// -----------------------------------------------------------------------------
-// Modulo 3 - Recepcion / Tickets / Cola.
-// Este controlador cubre el ciclo de vida del ticket:
-// generar -> llamar -> en atencion -> finalizar -> no-show.
-// Tambien expone endpoints de consulta para que el frontend trabaje con datos
-// utiles, enriquecidos y faciles de mostrar al usuario.
-// -----------------------------------------------------------------------------
-[AllowAnonymous]
 [Route("api/tickets")]
 public sealed class TicketsController : BaseController
 {
@@ -35,15 +26,14 @@ public sealed class TicketsController : BaseController
 
         request.UsuarioId = ResolveUserId(request.UsuarioId);
 
-        var result = await _ticketQueueService.GenerateTicketAsync(request, idempotencyKey, cancellationToken);
+        var result = await _ticketQueueService.GenerateTicketAsync(
+            request,
+            idempotencyKey,
+            cancellationToken);
+
         return ToActionResult(result);
     }
 
-    // -------------------------------------------------------------------------
-    // Endpoint mas amigable para el caso de ticket especial.
-    // El frontend no necesita recordar que debe enviar PrioridadSolicitada=ESPECIAL;
-    // este endpoint lo normaliza automaticamente.
-    // -------------------------------------------------------------------------
     [HttpPost("generar-especial")]
     public async Task<IActionResult> GenerarEspecial(
         [FromBody] SpecialTicketRequestDto request,
@@ -66,7 +56,11 @@ public sealed class TicketsController : BaseController
             UsuarioId = ResolveUserId(request.UsuarioId)
         };
 
-        var result = await _ticketQueueService.GenerateTicketAsync(normalizedRequest, idempotencyKey, cancellationToken);
+        var result = await _ticketQueueService.GenerateTicketAsync(
+            normalizedRequest,
+            idempotencyKey,
+            cancellationToken);
+
         return ToActionResult(result);
     }
 
@@ -82,12 +76,18 @@ public sealed class TicketsController : BaseController
 
         request.UsuarioId = ResolveUserId(request.UsuarioId);
 
-        var result = await _ticketQueueService.CallNextAsync(request, idempotencyKey, cancellationToken);
+        var result = await _ticketQueueService.CallNextAsync(
+            request,
+            idempotencyKey,
+            cancellationToken);
+
         return ToActionResult(result);
     }
 
     [HttpPost("{ticketId:long}/en-atencion")]
-    public async Task<IActionResult> MarcarEnAtencion(long ticketId, CancellationToken cancellationToken)
+    public async Task<IActionResult> MarcarEnAtencion(
+        long ticketId,
+        CancellationToken cancellationToken)
     {
         var result = await _ticketQueueService.MarkInAttentionAsync(ticketId, cancellationToken);
         return ToActionResult(result);
@@ -111,7 +111,9 @@ public sealed class TicketsController : BaseController
     }
 
     [HttpGet]
-    public async Task<IActionResult> Listar([FromQuery] TicketListFiltersDto filters, CancellationToken cancellationToken)
+    public async Task<IActionResult> Listar(
+        [FromQuery] TicketListFiltersDto filters,
+        CancellationToken cancellationToken)
     {
         var result = await _ticketQueueService.ListAsync(filters, cancellationToken);
         return ToActionResult(result);
@@ -123,7 +125,11 @@ public sealed class TicketsController : BaseController
         [FromQuery] int? servicioId,
         CancellationToken cancellationToken)
     {
-        var result = await _ticketQueueService.GetOperationalSummaryAsync(sedeId, servicioId, cancellationToken);
+        var result = await _ticketQueueService.GetOperationalSummaryAsync(
+            sedeId,
+            servicioId,
+            cancellationToken);
+
         return ToActionResult(result);
     }
 
@@ -135,13 +141,14 @@ public sealed class TicketsController : BaseController
     }
 
     [HttpGet("por-numero/{numeroTicket}")]
-    public async Task<IActionResult> ObtenerPorNumero(string numeroTicket, CancellationToken cancellationToken)
+    public async Task<IActionResult> ObtenerPorNumero(
+        string numeroTicket,
+        CancellationToken cancellationToken)
     {
         var result = await _ticketQueueService.GetByNumberAsync(numeroTicket, cancellationToken);
         return ToActionResult(result);
     }
 
-    [AllowAnonymous]
     [HttpGet("mi-ticket")]
     public async Task<IActionResult> MiTicket(
         [FromQuery] long? ticketId,
@@ -186,7 +193,7 @@ public sealed class TicketsController : BaseController
             ContadorLlamados = result.Data.ContadorLlamados
         };
 
-        return Ok(new
+        return StatusCode(result.HttpStatus, new
         {
             ok = true,
             code = result.Code,

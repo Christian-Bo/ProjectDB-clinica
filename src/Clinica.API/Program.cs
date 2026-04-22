@@ -7,13 +7,6 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// -----------------------------------------------------------------------------
-// 1) Carga de configuracion robusta.
-//    - appsettings.json
-//    - appsettings.{Environment}.json
-//    - .env y .env.local (desarrollo local)
-//    - variables de entorno reales (Railway, Windows, Linux)
-// -----------------------------------------------------------------------------
 EnvironmentBootstrapper.LoadFromDotEnv(builder.Environment.ContentRootPath);
 
 builder.Configuration
@@ -21,15 +14,25 @@ builder.Configuration
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
     .AddEnvironmentVariables();
 
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.ConfigureKestrel(options => options.ListenAnyIP(int.Parse(port)));
+var portRaw = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+if (!int.TryParse(portRaw, out var parsedPort) || parsedPort <= 0 || parsedPort > 65535)
+{
+    parsedPort = 8080;
+    Console.WriteLine($">> ADVERTENCIA: PORT '{portRaw}' invalido. Se usara {parsedPort}.");
+}
 
-builder.Services.Configure<TicketQueueWorkerOptions>(
-    builder.Configuration.GetSection(TicketQueueWorkerOptions.SectionName));
+builder.WebHost.ConfigureKestrel(options => options.ListenAnyIP(parsedPort));
+
+builder.Services
+    .AddOptions<TicketQueueWorkerOptions>()
+    .Bind(builder.Configuration.GetSection(TicketQueueWorkerOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 
 builder.Services.AddInfrastructure();
 
 builder.Services.AddAuthorization();
+
 builder.Services
     .AddControllers()
     .AddJsonOptions(options =>
@@ -38,13 +41,14 @@ builder.Services
     });
 
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "Clinica API",
         Version = "v1",
-        Description = "API .NET 8 para ClinicaDB con enfoque BD-first y modulo 3 de Recepcion/Tickets/Pantalla publica"
+        Description = "API .NET 8 para ClinicaDB con el modulo 3 de recepcion, tickets y pantalla publica."
     });
 
     options.AddSecurityDefinition("Idempotency-Key", new OpenApiSecurityScheme
@@ -52,15 +56,25 @@ builder.Services.AddSwaggerGen(options =>
         Name = "Idempotency-Key",
         Type = SecuritySchemeType.ApiKey,
         In = ParameterLocation.Header,
-        Description = "GUID opcional para evitar duplicados en operaciones criticas como generar ticket y llamar siguiente."
+        Description = "GUID opcional para evitar duplicados en operaciones criticas."
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Idempotency-Key"
+                }
+            },
+            Array.Empty<string>()
+        }
     });
 });
 
-// -----------------------------------------------------------------------------
-// 2) CORS flexible.
-//    Primero intenta leer el arreglo tradicional Cors:AllowedOrigins.
-//    Si no existe, usa una variable CSV llamada CORS_ALLOWED_ORIGINS.
-// -----------------------------------------------------------------------------
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
     .Get<string[]>();
@@ -80,17 +94,13 @@ builder.Services.AddCors(options =>
     options.AddPolicy("ClinicaPolicy", policy =>
     {
         policy.WithOrigins(allowedOrigins)
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+            .AllowAnyHeader()
+            .AllowAnyMethod();
     });
 });
 
 var app = builder.Build();
 
-// -----------------------------------------------------------------------------
-// 3) Mensaje diagnostico de arranque.
-//    Esto ayuda a detectar inmediatamente si la ConnectionString se cargo o no.
-// -----------------------------------------------------------------------------
 var connectionStringLoaded = DatabaseConnection.TryResolveConnectionString(builder.Configuration, out _);
 Console.WriteLine(connectionStringLoaded
     ? ">> ConnectionString 'DefaultConnection' detectada correctamente."
@@ -101,6 +111,7 @@ app.UseSwaggerUI();
 
 app.UseCors("ClinicaPolicy");
 app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();

@@ -2,11 +2,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Clinica.Application.Models.Tickets;
 
-// -----------------------------------------------------------------------------
-// DTOs del modulo 3.
-// Estan organizados para ser faciles de consumir en frontend y claros de leer.
-// Se prioriza que el usuario vea etiquetas/nombres utiles y no solo ids.
-// -----------------------------------------------------------------------------
 public sealed class GenerateTicketRequestDto
 {
     public long? CitaId { get; set; }
@@ -41,10 +36,10 @@ public sealed class SpecialTicketRequestDto
 
 public sealed class CallNextTicketRequestDto
 {
-    [Required]
+    [Range(1, int.MaxValue)]
     public int SedeId { get; set; }
 
-    [Required]
+    [Range(1, int.MaxValue)]
     public int ServicioId { get; set; }
 
     public int? EstacionId { get; set; }
@@ -133,49 +128,6 @@ public sealed class TicketDetailDto
     public int ContadorLlamados { get; init; }
 }
 
-public sealed class QueueTicketPreviewDto
-{
-    public long TicketId { get; init; }
-    public string NumeroTicket { get; init; } = string.Empty;
-    public string Prioridad { get; init; } = string.Empty;
-    public string Estado { get; init; } = string.Empty;
-    public DateTime? FechaReferencia { get; init; }
-    public int? ConsultorioId { get; init; }
-    public string? ConsultorioNombre { get; set; }
-}
-
-public sealed class QueueDisplayResponseDto
-{
-    public int SedeId { get; init; }
-    public string SedeNombre { get; init; } = string.Empty;
-    public int ServicioId { get; init; }
-    public string ServicioNombre { get; init; } = string.Empty;
-    public QueueTicketPreviewDto? Actual { get; init; }
-    public IReadOnlyList<QueueTicketPreviewDto> Proximos { get; init; } = Array.Empty<QueueTicketPreviewDto>();
-    public DateTime ConsultadoEnUtc { get; init; }
-}
-
-public sealed class ReceptionOperationalSummaryDto
-{
-    public int? SedeId { get; init; }
-    public string? SedeNombre { get; init; }
-    public int? ServicioId { get; init; }
-    public string? ServicioNombre { get; init; }
-    public int TicketsEnEspera { get; init; }
-    public int TicketsLlamados { get; init; }
-    public int TicketsEnAtencion { get; init; }
-    public int TicketsFinalizados { get; init; }
-    public int TicketsNoShow { get; init; }
-    public int TicketsEspecialesHoy { get; init; }
-    public string? UltimoTicketLlamado { get; init; }
-    public DateTime ConsultadoEnUtc { get; init; }
-}
-
-public sealed class NoShowProcessResponseDto
-{
-    public int RegistrosProcesados { get; init; }
-}
-
 public sealed class PublicTicketStatusDto
 {
     public long TicketId { get; init; }
@@ -193,4 +145,49 @@ public sealed class PublicTicketStatusDto
     public DateTime? FechaInicioAtencion { get; init; }
     public DateTime? FechaFinAtencion { get; init; }
     public int ContadorLlamados { get; init; }
+}
+
+public sealed class QueueTicketPreviewDto
+{
+    public long TicketId { get; init; }
+    public string NumeroTicket { get; init; } = string.Empty;
+    public string Prioridad { get; init; } = string.Empty;
+    public string Estado { get; init; } = string.Empty;
+    public DateTime? FechaReferencia { get; init; }
+    public int? ConsultorioId { get; init; }
+
+    // Se deja mutable para no romper el mapeo actual de TicketQueueService.
+    public string? ConsultorioNombre { get; set; }
+}
+
+public sealed class QueueDisplayResponseDto
+{
+    public int SedeId { get; init; }
+    public string SedeNombre { get; init; } = string.Empty;
+    public int ServicioId { get; init; }
+    public string ServicioNombre { get; init; } = string.Empty;
+    public QueueTicketPreviewDto? Actual { get; init; }
+    public IReadOnlyList<QueueTicketPreviewDto> Proximos { get; init; } = Array.Empty<QueueTicketPreviewDto>();
+    public DateTime ConsultadoEnUtc { get; init; }
+}
+
+public sealed class ReceptionOperationalSummaryDto
+{
+    public int? SedeId { get; set; }
+    public string? SedeNombre { get; set; }
+    public int? ServicioId { get; set; }
+    public string? ServicioNombre { get; set; }
+    public int TicketsEnEspera { get; set; }
+    public int TicketsLlamados { get; set; }
+    public int TicketsEnAtencion { get; set; }
+    public int TicketsFinalizados { get; set; }
+    public int TicketsNoShow { get; set; }
+    public int TicketsEspecialesHoy { get; set; }
+    public string? UltimoTicketLlamado { get; set; }
+    public DateTime ConsultadoEnUtc { get; set; }
+}
+
+public sealed class NoShowProcessResponseDto
+{
+    public int RegistrosProcesados { get; init; }
 }

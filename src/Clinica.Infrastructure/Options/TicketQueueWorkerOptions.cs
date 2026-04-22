@@ -1,13 +1,19 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Clinica.Infrastructure.Options;
 
-// -----------------------------------------------------------------------------
-// Opciones del worker del modulo 3.
-// Estas opciones se pueden ajustar desde appsettings o variables de entorno.
-// -----------------------------------------------------------------------------
 public sealed class TicketQueueWorkerOptions
 {
     public const string SectionName = "TicketQueueWorker";
 
     public bool ProcessNoShowEnabled { get; set; } = true;
-    public int NoShowIntervalSeconds { get; set; } = 60;
+
+    private int _noShowIntervalSeconds = 60;
+
+    [Range(1, int.MaxValue)]
+    public int NoShowIntervalSeconds
+    {
+        get => _noShowIntervalSeconds;
+        set => _noShowIntervalSeconds = value > 0 ? value : 60;
+    }
 }

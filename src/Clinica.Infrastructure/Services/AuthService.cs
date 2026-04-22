@@ -2,8 +2,20 @@ using Clinica.Application.Contracts;
 
 namespace Clinica.Infrastructure.Services;
 
-// Implementacion base del servicio de autenticacion.
-// Se deja como stub para que luego conecten login real, hashing y JWT.
 public sealed class AuthService : IAuthService
 {
+    public Task<string?> AuthenticateAsync(string username, string password, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<string?>(null);
+    }
+
+    public Task<bool> ValidateTokenAsync(string token, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(false);
+    }
+
+    public Task SignOutAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
 }

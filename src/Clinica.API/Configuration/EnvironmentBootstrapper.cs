@@ -2,16 +2,6 @@ using System.Text;
 
 namespace Clinica.API.Configuration;
 
-// -----------------------------------------------------------------------------
-// Cargador liviano de archivos .env para desarrollo local.
-//
-// Objetivo:
-// - Permitir que el backend lea variables desde .env y .env.local sin depender
-//   de paquetes externos.
-// - Soportar ejecucion desde la raiz del repo o desde src/Clinica.API.
-// - No sobrescribir variables que ya vienen definidas en el sistema o Railway,
-//   salvo que se pida explicitamente.
-// -----------------------------------------------------------------------------
 public static class EnvironmentBootstrapper
 {
     public static void LoadFromDotEnv(string contentRootPath, bool overrideExisting = false)
@@ -41,38 +31,53 @@ public static class EnvironmentBootstrapper
 
     private static void LoadFile(string filePath, bool overrideExisting)
     {
-        foreach (var rawLine in File.ReadAllLines(filePath, Encoding.UTF8))
+        try
         {
-            var line = rawLine.Trim();
-
-            if (string.IsNullOrWhiteSpace(line) || line.StartsWith('#'))
+            foreach (var rawLine in File.ReadAllLines(filePath, Encoding.UTF8))
             {
-                continue;
+                var line = rawLine.Trim();
+
+                if (string.IsNullOrWhiteSpace(line) || line.StartsWith('#'))
+                {
+                    continue;
+                }
+
+                var separatorIndex = line.IndexOf('=');
+                if (separatorIndex <= 0)
+                {
+                    continue;
+                }
+
+                var key = line[..separatorIndex].Trim();
+                var value = line[(separatorIndex + 1)..].Trim();
+
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    continue;
+                }
+
+                value = StripWrappingQuotes(value);
+
+                var currentValue = Environment.GetEnvironmentVariable(key);
+                if (!overrideExisting && !string.IsNullOrWhiteSpace(currentValue))
+                {
+                    continue;
+                }
+
+                Environment.SetEnvironmentVariable(key, value);
             }
-
-            var separatorIndex = line.IndexOf('=');
-            if (separatorIndex <= 0)
-            {
-                continue;
-            }
-
-            var key = line[..separatorIndex].Trim();
-            var value = line[(separatorIndex + 1)..].Trim();
-
-            if (string.IsNullOrWhiteSpace(key))
-            {
-                continue;
-            }
-
-            value = StripWrappingQuotes(value);
-
-            var currentValue = Environment.GetEnvironmentVariable(key);
-            if (!overrideExisting && !string.IsNullOrWhiteSpace(currentValue))
-            {
-                continue;
-            }
-
-            Environment.SetEnvironmentVariable(key, value);
+        }
+        catch (IOException ex)
+        {
+            Console.WriteLine($">> ADVERTENCIA: no se pudo leer '{filePath}': {ex.Message}");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Console.WriteLine($">> ADVERTENCIA: acceso denegado a '{filePath}': {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($">> ADVERTENCIA: error cargando '{filePath}': {ex.Message}");
         }
     }
 
