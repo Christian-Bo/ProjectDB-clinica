@@ -445,7 +445,17 @@ ORDER BY ISNULL(t.FechaLlamado, t.FechaInicioAtencion) DESC, t.TicketId DESC;";
 
         if (actual?.ConsultorioId is int consultorioId)
         {
-            actual.ConsultorioNombre = await LoadConsultorioNameAsync(connection, consultorioId, cancellationToken);
+            var consultorioNombre = await LoadConsultorioNameAsync(connection, consultorioId, cancellationToken);
+            actual = new QueueTicketPreviewDto
+            {
+                TicketId = actual.TicketId,
+                NumeroTicket = actual.NumeroTicket,
+                Prioridad = actual.Prioridad,
+                Estado = actual.Estado,
+                FechaReferencia = actual.FechaReferencia,
+                ConsultorioId = actual.ConsultorioId,
+                ConsultorioNombre = consultorioNombre
+            };
         }
 
         return new ServiceOperationResult<QueueDisplayResponseDto>
@@ -754,7 +764,7 @@ ORDER BY ISNULL(t.FechaLlamado, t.FechaInicioAtencion) DESC, t.TicketId DESC;";
             {
                 HttpStatus = StatusCodes.Status500InternalServerError,
                 Code = "ERROR_INFRAESTRUCTURA",
-                Message = ex.Message
+                Message = "Ocurrió un error interno al ejecutar el procedimiento almacenado"
             };
         }
     }
@@ -772,20 +782,27 @@ ORDER BY ISNULL(t.FechaLlamado, t.FechaInicioAtencion) DESC, t.TicketId DESC;";
             return Array.Empty<TicketDetailDto>();
         }
 
-        await using var command = connection.CreateCommand();
-        command.CommandType = CommandType.Text;
-        command.CommandTimeout = 60;
+        var distinctIds = ticketIds.Distinct().ToList();
+        var map = new Dictionary<long, TicketDetailDto>();
+        const int batchSize = 1000;
 
-        var parameterNames = new List<string>();
-        var index = 0;
-        foreach (var ticketId in ticketIds.Distinct())
+        for (var batchStart = 0; batchStart < distinctIds.Count; batchStart += batchSize)
         {
-            var parameterName = $"@Id{index++}";
-            parameterNames.Add(parameterName);
-            command.Parameters.Add(new SqlParameter(parameterName, SqlDbType.BigInt) { Value = ticketId });
-        }
+            var batch = distinctIds.Skip(batchStart).Take(batchSize).ToList();
 
-        command.CommandText = $@"
+            await using var command = connection.CreateCommand();
+            command.CommandType = CommandType.Text;
+            command.CommandTimeout = 60;
+
+            var parameterNames = new List<string>();
+            for (var i = 0; i < batch.Count; i++)
+            {
+                var parameterName = $"@Id{i}";
+                parameterNames.Add(parameterName);
+                command.Parameters.Add(new SqlParameter(parameterName, SqlDbType.BigInt) { Value = batch[i] });
+            }
+
+            command.CommandText = $@"
 SELECT
     t.TicketId,
     t.NumeroTicket,
@@ -828,47 +845,46 @@ LEFT JOIN dbo.Usuarios ua ON ua.UsuarioId = t.AutorizadoPor
 LEFT JOIN dbo.Citas c ON c.CitaId = t.CitaId
 WHERE t.TicketId IN ({string.Join(", ", parameterNames)});";
 
-        var map = new Dictionary<long, TicketDetailDto>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            var dto = new TicketDetailDto
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
             {
-                TicketId = reader.GetInt64OrDefault("TicketId"),
-                NumeroTicket = reader.GetNullableString("NumeroTicket") ?? string.Empty,
-                Estado = reader.GetNullableString("Estado") ?? string.Empty,
-                Prioridad = reader.GetNullableString("Prioridad") ?? string.Empty,
-                EsEspecial = reader.GetBooleanOrDefault("EsEspecial"),
-                MotivoEspecial = reader.GetNullableString("MotivoEspecial"),
-                CitaId = reader.GetNullableInt64("CitaId"),
-                CitaEstado = reader.GetNullableString("CitaEstado"),
-                PacienteId = reader.GetInt32OrDefault("PacienteId"),
-                PacienteNombre = reader.GetNullableString("PacienteNombre") ?? string.Empty,
-                NumeroExpediente = reader.GetNullableString("NumeroExpediente"),
-                PacienteDocumento = reader.GetNullableString("PacienteDocumento"),
-                SedeId = reader.GetInt32OrDefault("SedeId"),
-                SedeNombre = reader.GetNullableString("SedeNombre") ?? string.Empty,
-                ServicioId = reader.GetInt32OrDefault("ServicioId"),
-                ServicioNombre = reader.GetNullableString("ServicioNombre") ?? string.Empty,
-                EspecialidadNombre = reader.GetNullableString("EspecialidadNombre"),
-                MedicoId = reader.GetNullableInt32("MedicoId"),
-                MedicoNombre = reader.GetNullableString("MedicoNombre"),
-                ConsultorioId = reader.GetNullableInt32("ConsultorioId"),
-                ConsultorioNombre = reader.GetNullableString("ConsultorioNombre"),
-                AutorizadoPorId = reader.GetNullableInt32("AutorizadoPorId"),
-                AutorizadoPorNombre = reader.GetNullableString("AutorizadoPorNombre"),
-                FechaGeneracion = reader.GetDateTimeOrDefault("FechaGeneracion"),
-                FechaLlamado = reader.GetNullableDateTime("FechaLlamado"),
-                FechaInicioAtencion = reader.GetNullableDateTime("FechaInicioAtencion"),
-                FechaFinAtencion = reader.GetNullableDateTime("FechaFinAtencion"),
-                ContadorLlamados = reader.GetInt32OrDefault("ContadorLlamados")
-            };
+                var dto = new TicketDetailDto
+                {
+                    TicketId = reader.GetInt64OrDefault("TicketId"),
+                    NumeroTicket = reader.GetNullableString("NumeroTicket") ?? string.Empty,
+                    Estado = reader.GetNullableString("Estado") ?? string.Empty,
+                    Prioridad = reader.GetNullableString("Prioridad") ?? string.Empty,
+                    EsEspecial = reader.GetBooleanOrDefault("EsEspecial"),
+                    MotivoEspecial = reader.GetNullableString("MotivoEspecial"),
+                    CitaId = reader.GetNullableInt64("CitaId"),
+                    CitaEstado = reader.GetNullableString("CitaEstado"),
+                    PacienteId = reader.GetInt32OrDefault("PacienteId"),
+                    PacienteNombre = reader.GetNullableString("PacienteNombre") ?? string.Empty,
+                    NumeroExpediente = reader.GetNullableString("NumeroExpediente"),
+                    PacienteDocumento = reader.GetNullableString("PacienteDocumento"),
+                    SedeId = reader.GetInt32OrDefault("SedeId"),
+                    SedeNombre = reader.GetNullableString("SedeNombre") ?? string.Empty,
+                    ServicioId = reader.GetInt32OrDefault("ServicioId"),
+                    ServicioNombre = reader.GetNullableString("ServicioNombre") ?? string.Empty,
+                    EspecialidadNombre = reader.GetNullableString("EspecialidadNombre"),
+                    MedicoId = reader.GetNullableInt32("MedicoId"),
+                    MedicoNombre = reader.GetNullableString("MedicoNombre"),
+                    ConsultorioId = reader.GetNullableInt32("ConsultorioId"),
+                    ConsultorioNombre = reader.GetNullableString("ConsultorioNombre"),
+                    AutorizadoPorId = reader.GetNullableInt32("AutorizadoPorId"),
+                    AutorizadoPorNombre = reader.GetNullableString("AutorizadoPorNombre"),
+                    FechaGeneracion = reader.GetDateTimeOrDefault("FechaGeneracion"),
+                    FechaLlamado = reader.GetNullableDateTime("FechaLlamado"),
+                    FechaInicioAtencion = reader.GetNullableDateTime("FechaInicioAtencion"),
+                    FechaFinAtencion = reader.GetNullableDateTime("FechaFinAtencion"),
+                    ContadorLlamados = reader.GetInt32OrDefault("ContadorLlamados")
+                };
 
-            map[dto.TicketId] = dto;
+                map[dto.TicketId] = dto;
+            }
         }
 
-        return ticketIds
-            .Distinct()
+        return distinctIds
             .Where(map.ContainsKey)
             .Select(id => map[id])
             .ToList();

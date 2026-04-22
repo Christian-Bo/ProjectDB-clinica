@@ -12,7 +12,6 @@ namespace Clinica.API.Controllers;
 // Tambien expone endpoints de consulta para que el frontend trabaje con datos
 // utiles, enriquecidos y faciles de mostrar al usuario.
 // -----------------------------------------------------------------------------
-[AllowAnonymous]
 [Route("api/tickets")]
 public sealed class TicketsController : BaseController
 {
@@ -141,6 +140,7 @@ public sealed class TicketsController : BaseController
         return ToActionResult(result);
     }
 
+    [AllowAnonymous]
     [HttpGet("mi-ticket")]
     public async Task<IActionResult> MiTicket(
         [FromQuery] long? ticketId,

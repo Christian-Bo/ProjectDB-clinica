@@ -22,10 +22,17 @@ builder.Configuration
     .AddEnvironmentVariables();
 
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.ConfigureKestrel(options => options.ListenAnyIP(int.Parse(port)));
+if (!int.TryParse(port, out var parsedPort) || parsedPort <= 0)
+{
+    parsedPort = 8080;
+    Console.WriteLine($">> ADVERTENCIA: Variable PORT invalida ('{port}'). Se usara el puerto por defecto {parsedPort}.");
+}
+builder.WebHost.ConfigureKestrel(options => options.ListenAnyIP(parsedPort));
 
-builder.Services.Configure<TicketQueueWorkerOptions>(
-    builder.Configuration.GetSection(TicketQueueWorkerOptions.SectionName));
+builder.Services.AddOptions<TicketQueueWorkerOptions>()
+    .Bind(builder.Configuration.GetSection(TicketQueueWorkerOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 
 builder.Services.AddInfrastructure();
 

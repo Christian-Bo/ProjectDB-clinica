@@ -15,7 +15,7 @@ public sealed class AuthController : BaseController
         {
             modulo = "auth",
             estado = "pendiente_de_implementar",
-            mensaje = "La conexion a BD ya puede probarse desde /api/v1/health/db"
+            mensaje = "La conexion a BD ya puede probarse desde /api/health/db"
         });
     }
 }

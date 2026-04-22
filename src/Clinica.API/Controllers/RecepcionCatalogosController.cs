@@ -9,7 +9,6 @@ namespace Clinica.API.Controllers;
 // La idea es que el usuario vea listas claras con nombres y etiquetas amigables,
 // en lugar de trabajar manualmente con ids sueltos.
 // -----------------------------------------------------------------------------
-[AllowAnonymous]
 [Route("api/recepcion/catalogos")]
 public sealed class RecepcionCatalogosController : BaseController
 {
@@ -20,6 +19,7 @@ public sealed class RecepcionCatalogosController : BaseController
         _ticketQueueService = ticketQueueService;
     }
 
+    [AllowAnonymous]
     [HttpGet("sedes")]
     public async Task<IActionResult> Sedes(CancellationToken cancellationToken)
     {
@@ -27,6 +27,7 @@ public sealed class RecepcionCatalogosController : BaseController
         return ToActionResult(result);
     }
 
+    [AllowAnonymous]
     [HttpGet("servicios")]
     public async Task<IActionResult> Servicios([FromQuery] int? sedeId, CancellationToken cancellationToken)
     {
@@ -62,6 +63,7 @@ public sealed class RecepcionCatalogosController : BaseController
         return ToActionResult(result);
     }
 
+    [AllowAnonymous]
     [HttpGet("prioridades-ticket")]
     public async Task<IActionResult> PrioridadesTicket(CancellationToken cancellationToken)
     {
@@ -69,6 +71,7 @@ public sealed class RecepcionCatalogosController : BaseController
         return ToActionResult(result);
     }
 
+    [AllowAnonymous]
     [HttpGet("estados-ticket")]
     public async Task<IActionResult> EstadosTicket(CancellationToken cancellationToken)
     {

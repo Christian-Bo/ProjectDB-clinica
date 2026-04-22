@@ -141,7 +141,7 @@ public sealed class QueueTicketPreviewDto
     public string Estado { get; init; } = string.Empty;
     public DateTime? FechaReferencia { get; init; }
     public int? ConsultorioId { get; init; }
-    public string? ConsultorioNombre { get; set; }
+    public string? ConsultorioNombre { get; init; }
 }
 
 public sealed class QueueDisplayResponseDto

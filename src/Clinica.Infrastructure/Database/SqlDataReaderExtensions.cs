@@ -84,7 +84,12 @@ internal static class SqlDataReaderExtensions
         }
 
         var ordinal = reader.GetOrdinal(columnName);
-        return !reader.IsDBNull(ordinal) && Convert.ToBoolean(reader.GetValue(ordinal));
+        if (reader.IsDBNull(ordinal))
+        {
+            return defaultValue;
+        }
+
+        return Convert.ToBoolean(reader.GetValue(ordinal));
     }
 
     public static DateTime GetDateTimeOrDefault(this SqlDataReader reader, string columnName)

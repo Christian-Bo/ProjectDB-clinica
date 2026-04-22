@@ -50,7 +50,7 @@ public abstract class BaseController : ControllerBase
     // -------------------------------------------------------------------------
     protected int? ResolveUserId(int? bodyUserId = null)
     {
-        if (bodyUserId.HasValue)
+        if (bodyUserId.HasValue && bodyUserId.Value > 0)
         {
             return bodyUserId;
         }
@@ -59,13 +59,14 @@ public abstract class BaseController : ControllerBase
             ?? User.FindFirstValue("sub")
             ?? User.FindFirstValue("usuarioId");
 
-        if (int.TryParse(fromClaim, out var claimUserId))
+        if (int.TryParse(fromClaim, out var claimUserId) && claimUserId > 0)
         {
             return claimUserId;
         }
 
         if (Request.Headers.TryGetValue("X-Usuario-Id", out var rawHeader)
-            && int.TryParse(rawHeader.ToString(), out var headerUserId))
+            && int.TryParse(rawHeader.ToString(), out var headerUserId)
+            && headerUserId > 0)
         {
             return headerUserId;
         }
