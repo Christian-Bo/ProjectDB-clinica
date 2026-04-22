@@ -8,8 +8,8 @@ namespace Clinica.API.Controllers;
 // Controlador base.
 // Aqui centralizamos helpers utiles para todos los controladores:
 // - Leer Idempotency-Key.
-// - Resolver UsuarioId desde body, claim o header de pruebas.
-// - Enviar respuestas uniformes: ok, code, message, data.
+// - Resolver UsuarioId desde claims autenticados o fallback de pruebas.
+// - Enviar respuestas uniformes: ok, code, message y data.
 // -----------------------------------------------------------------------------
 [ApiController]
 [Produces("application/json")]
@@ -20,7 +20,8 @@ public abstract class BaseController : ControllerBase
         idempotencyKey = null;
         errorResult = null;
 
-        if (!Request.Headers.TryGetValue("Idempotency-Key", out var rawHeader) || string.IsNullOrWhiteSpace(rawHeader))
+        if (!Request.Headers.TryGetValue("Idempotency-Key", out var rawHeader) ||
+            string.IsNullOrWhiteSpace(rawHeader))
         {
             return true;
         }
@@ -41,33 +42,37 @@ public abstract class BaseController : ControllerBase
     }
 
     // -------------------------------------------------------------------------
-    // Mientras el modulo de autenticacion no este completo, permitimos resolver
-    // el usuario desde:
-    // 1) el valor que venga en el body,
-    // 2) el claim NameIdentifier,
-    // 3) el header X-Usuario-Id.
-    // Esto facilita pruebas manuales y Postman sin bloquear al equipo.
+    // Regla de seguridad:
+    // 1) Si el usuario esta autenticado, se confia primero en sus claims.
+    // 2) Solo si NO esta autenticado, se permite fallback desde body o header
+    //    para pruebas manuales en Postman mientras el modulo auth no esta listo.
     // -------------------------------------------------------------------------
     protected int? ResolveUserId(int? bodyUserId = null)
     {
-        if (bodyUserId.HasValue)
-        {
-            return bodyUserId;
-        }
+        var isAuthenticated = User?.Identity?.IsAuthenticated == true;
 
-        var fromClaim = User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? User.FindFirstValue("sub")
-            ?? User.FindFirstValue("usuarioId");
+        var fromClaim = User?.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User?.FindFirstValue("sub")
+            ?? User?.FindFirstValue("usuarioId");
 
-        if (int.TryParse(fromClaim, out var claimUserId))
+        if (int.TryParse(fromClaim, out var claimUserId) && claimUserId > 0)
         {
             return claimUserId;
         }
 
-        if (Request.Headers.TryGetValue("X-Usuario-Id", out var rawHeader)
-            && int.TryParse(rawHeader.ToString(), out var headerUserId))
+        if (!isAuthenticated)
         {
-            return headerUserId;
+            if (bodyUserId.HasValue && bodyUserId.Value > 0)
+            {
+                return bodyUserId.Value;
+            }
+
+            if (Request.Headers.TryGetValue("X-Usuario-Id", out var rawHeader) &&
+                int.TryParse(rawHeader.ToString(), out var headerUserId) &&
+                headerUserId > 0)
+            {
+                return headerUserId;
+            }
         }
 
         return null;

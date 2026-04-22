@@ -175,3 +175,22 @@ public sealed class NoShowProcessResponseDto
 {
     public int RegistrosProcesados { get; init; }
 }
+
+public sealed class PublicTicketStatusDto
+{
+    public long TicketId { get; init; }
+    public string NumeroTicket { get; init; } = string.Empty;
+    public string Estado { get; init; } = string.Empty;
+    public string Prioridad { get; init; } = string.Empty;
+    public bool EsEspecial { get; init; }
+    public string? MotivoEspecial { get; init; }
+    public string SedeNombre { get; init; } = string.Empty;
+    public string ServicioNombre { get; init; } = string.Empty;
+    public string? ConsultorioNombre { get; init; }
+    public string? MedicoNombre { get; init; }
+    public DateTime FechaGeneracion { get; init; }
+    public DateTime? FechaLlamado { get; init; }
+    public DateTime? FechaInicioAtencion { get; init; }
+    public DateTime? FechaFinAtencion { get; init; }
+    public int ContadorLlamados { get; init; }
+}

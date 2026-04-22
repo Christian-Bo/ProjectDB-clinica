@@ -141,6 +141,7 @@ public sealed class TicketsController : BaseController
         return ToActionResult(result);
     }
 
+    [AllowAnonymous]
     [HttpGet("mi-ticket")]
     public async Task<IActionResult> MiTicket(
         [FromQuery] long? ticketId,
@@ -161,6 +162,36 @@ public sealed class TicketsController : BaseController
             ? await _ticketQueueService.GetByIdAsync(ticketId.Value, cancellationToken)
             : await _ticketQueueService.GetByNumberAsync(numeroTicket!, cancellationToken);
 
-        return ToActionResult(result);
+        if (!result.Success || result.Data is null)
+        {
+            return ToActionResult(result);
+        }
+
+        var publicData = new PublicTicketStatusDto
+        {
+            TicketId = result.Data.TicketId,
+            NumeroTicket = result.Data.NumeroTicket,
+            Estado = result.Data.Estado,
+            Prioridad = result.Data.Prioridad,
+            EsEspecial = result.Data.EsEspecial,
+            MotivoEspecial = result.Data.MotivoEspecial,
+            SedeNombre = result.Data.SedeNombre,
+            ServicioNombre = result.Data.ServicioNombre,
+            ConsultorioNombre = result.Data.ConsultorioNombre,
+            MedicoNombre = result.Data.MedicoNombre,
+            FechaGeneracion = result.Data.FechaGeneracion,
+            FechaLlamado = result.Data.FechaLlamado,
+            FechaInicioAtencion = result.Data.FechaInicioAtencion,
+            FechaFinAtencion = result.Data.FechaFinAtencion,
+            ContadorLlamados = result.Data.ContadorLlamados
+        };
+
+        return Ok(new
+        {
+            ok = true,
+            code = result.Code,
+            message = result.Message,
+            data = publicData
+        });
     }
 }
