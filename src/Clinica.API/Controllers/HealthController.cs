@@ -4,11 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Clinica.API.Controllers;
 
-[ApiController]
 [AllowAnonymous]
-[Route("api/v1/health")]
-[Produces("application/json")]
-public sealed class HealthController : ControllerBase
+[Route("api/health")]
+public sealed class HealthController : BaseController
 {
     private readonly IDatabaseHealthService _databaseHealthService;
 

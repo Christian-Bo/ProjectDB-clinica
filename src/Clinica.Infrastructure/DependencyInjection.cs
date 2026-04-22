@@ -1,12 +1,14 @@
 using Clinica.Application.Contracts;
 using Clinica.Infrastructure.Database;
+using Clinica.Infrastructure.HostedServices;
 using Clinica.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Clinica.Infrastructure;
 
-// Registra todos los servicios y repositorios de infraestructura.
-// Llama AddInfrastructure() desde Program.cs.
+// -----------------------------------------------------------------------------
+// Registro centralizado de infraestructura.
+// -----------------------------------------------------------------------------
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
@@ -14,6 +16,10 @@ public static class DependencyInjection
         services.AddScoped<DatabaseConnection>();
         services.AddScoped<IDatabaseHealthService, DatabaseHealthService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ITicketQueueService, TicketQueueService>();
+
+        // Worker ligero para suplir la ausencia de SQL Agent en Railway/Somee.
+        services.AddHostedService<TicketQueueMaintenanceWorker>();
 
         return services;
     }
