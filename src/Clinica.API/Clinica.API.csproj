@@ -5,9 +5,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RuntimeIdentifiers>linux-x64</RuntimeIdentifiers>
     <UseRidGraph>true</UseRidGraph>
+    <UserSecretsId>clinica-api-local-secrets</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.20" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
   </ItemGroup>
