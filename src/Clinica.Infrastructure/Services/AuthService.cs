@@ -2,10 +2,20 @@ using Clinica.Application.Contracts;
 
 namespace Clinica.Infrastructure.Services;
 
-// Implementacion del servicio de autenticacion
-// Implementa IAuthService
 public sealed class AuthService : IAuthService
 {
-    // TODO: inyectar dependencias en el constructor
-    // TODO: implementar metodos de IAuthService
+    public Task<string?> AuthenticateAsync(string username, string password, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<string?>(null);
+    }
+
+    public Task<bool> ValidateTokenAsync(string token, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(false);
+    }
+
+    public Task SignOutAsync(CancellationToken cancellationToken = default)
+    {
+        return Task.CompletedTask;
+    }
 }
