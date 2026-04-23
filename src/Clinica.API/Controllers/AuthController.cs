@@ -1,10 +1,24 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Clinica.API.Controllers;
 
-// Controlador de autenticacion
+// -----------------------------------------------------------------------------
+// Controlador base de autenticacion.
+// Se deja listo para que luego conecten login real con sus SPs de seguridad.
+// -----------------------------------------------------------------------------
+[Route("api/auth")]
 public sealed class AuthController : BaseController
 {
-    // TODO: inyectar IAuthService en el constructor
-    // TODO: agregar endpoints de login, logout, etc.
+    [AllowAnonymous]
+    [HttpGet("status")]
+    public IActionResult Status()
+    {
+        return Ok(new
+        {
+            modulo = "auth",
+            estado = "pendiente_de_implementar",
+            mensaje = "La conexion a BD ya puede probarse desde /api/health/db"
+        });
+    }
 }

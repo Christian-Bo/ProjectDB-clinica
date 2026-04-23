@@ -1,8 +1,7 @@
 namespace Clinica.Application.Contracts;
 
-// Contrato del servicio de autenticacion
-// Define aqui los metodos que debe implementar AuthService
+// Contrato base del servicio de autenticacion.
+// Se deja como stub para completar despues con login real, JWT y SPs de seguridad.
 public interface IAuthService
 {
-    // TODO: agregar metodos
 }
