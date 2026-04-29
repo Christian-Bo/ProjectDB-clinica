@@ -84,10 +84,6 @@ public sealed class SqlExecutor
             {
                 if (reader.HasColumn("HttpStatus"))
                 {
-                    var cols = Enumerable.Range(0, reader.FieldCount)
-                                         .Select(i => reader.GetName(i))
-                                         .ToList();
-                    Console.WriteLine("Columnas SP: " + string.Join(", ", cols));
 
                     return new SpResult
                     {
