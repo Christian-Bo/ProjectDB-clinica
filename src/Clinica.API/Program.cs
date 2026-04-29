@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Clinica.API.Configuration;
+using Clinica.API.Middlewares;
 using Clinica.Infrastructure;
 using Clinica.Infrastructure.Database;
 using Clinica.Infrastructure.Options;
@@ -99,6 +100,7 @@ Console.WriteLine(connectionStringLoaded
 app.UseSwagger();
 app.UseSwaggerUI();
 
+app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseCors("ClinicaPolicy");
 app.UseAuthorization();
 app.MapControllers();
