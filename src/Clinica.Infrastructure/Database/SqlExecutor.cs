@@ -3,11 +3,6 @@ using System.Data;
 
 namespace Clinica.Infrastructure.Database;
 
-// -----------------------------------------------------------------------------
-// Ejecutor centralizado de Stored Procedures.
-// NINGUNA consulta SQL directa debe existir fuera de esta clase.
-// Solo nombres de SP y parametros tipados.
-// -----------------------------------------------------------------------------
 public sealed class SqlExecutor
 {
     private readonly DatabaseConnection _db;
@@ -17,7 +12,6 @@ public sealed class SqlExecutor
         _db = db;
     }
 
-    // Ejecuta un SP y mapea los resultados a una lista de T
     public async Task<List<T>> QueryAsync<T>(
         string storedProcedure,
         SqlParameter[] parameters,
@@ -44,7 +38,6 @@ public sealed class SqlExecutor
         return results;
     }
 
-    // Ejecuta un SP y mapea el primer resultado a T (o null si no hay filas)
     public async Task<T?> QuerySingleAsync<T>(
         string storedProcedure,
         SqlParameter[] parameters,
@@ -69,7 +62,6 @@ public sealed class SqlExecutor
         return null;
     }
 
-    // Ejecuta un SP que devuelve HttpStatus, Codigo y Mensaje (patron estandar del proyecto)
     public async Task<SpResult> ExecuteAsync(
         string storedProcedure,
         SqlParameter[] parameters)
@@ -85,25 +77,40 @@ public sealed class SqlExecutor
         command.Parameters.AddRange(parameters);
 
         await using var reader = await command.ExecuteReaderAsync();
-        if (await reader.ReadAsync())
+
+        do
         {
-            return new SpResult
+            while (await reader.ReadAsync())
             {
-                HttpStatus = reader.GetInt32OrDefault("HttpStatus", 200),
-                Codigo = reader.GetNullableString("Codigo") ?? string.Empty,
-                Mensaje = reader.GetNullableString("Mensaje") ?? string.Empty
-            };
+                if (reader.HasColumn("HttpStatus"))
+                {
+                    var cols = Enumerable.Range(0, reader.FieldCount)
+                                         .Select(i => reader.GetName(i))
+                                         .ToList();
+                    Console.WriteLine("Columnas SP: " + string.Join(", ", cols));
+
+                    return new SpResult
+                    {
+                        HttpStatus = reader.GetInt32OrDefault("HttpStatus", 200),
+                        Codigo     = reader.GetNullableString("Codigo") ?? string.Empty,
+                        Mensaje    = reader.GetNullableString("Mensaje") ?? string.Empty,
+                        EntityId   = reader.GetNullableInt64("CitaId")
+                    };
+                }
+            }
         }
+        while (await reader.NextResultAsync());
 
         return new SpResult { HttpStatus = 200, Codigo = "OK", Mensaje = "Operacion completada" };
     }
 }
 
-// Resultado estandar que devuelven los SPs del proyecto
+// Fuera de SqlExecutor
 public sealed class SpResult
 {
     public int HttpStatus { get; init; }
     public string Codigo { get; init; } = string.Empty;
     public string Mensaje { get; init; } = string.Empty;
+    public long? EntityId { get; init; }
     public bool Success => HttpStatus >= 200 && HttpStatus < 300;
 }

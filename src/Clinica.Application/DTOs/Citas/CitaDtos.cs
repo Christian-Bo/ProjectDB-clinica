@@ -31,11 +31,12 @@ public sealed class ReprogramarCitaRequestDto
     public int? NuevoMedicoId { get; set; }
     public int? NuevoConsultorioId { get; set; }
     public string? MotivoReprogramacion { get; set; }
+    public Guid IdempotencyKey { get; set; }
 }
 
 public sealed class CitaResponseDto
 {
-    public int CitaId { get; set; }
+    public long CitaId { get; set; }
     public int PacienteId { get; set; }
     public string NumeroExpediente { get; set; } = string.Empty;
     public int SedeId { get; set; }
