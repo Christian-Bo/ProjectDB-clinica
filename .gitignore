@@ -5,7 +5,6 @@ obj/
 .vscode/
 .idea/
 appsettings.Production.json
-appsettings.Development.json
 .env
 .env.*
 !.env.example
