@@ -6,7 +6,6 @@ public sealed class ReservarCitaRequestDto
     public int SedeId { get; set; }
     public int ServicioId { get; set; }
     public int? MedicoId { get; set; }
-    public int? ConsultorioId { get; set; }
     public int TipoConsultaId { get; set; }
     public DateTime FechaInicio { get; set; }
     public string Modalidad { get; set; } = "PRESENCIAL";
@@ -28,9 +27,6 @@ public sealed class ReprogramarCitaRequestDto
 {
     public int UsuarioId { get; set; }
     public DateTime NuevaFechaInicio { get; set; }
-    public int? NuevoMedicoId { get; set; }
-    public int? NuevoConsultorioId { get; set; }
-    public string? MotivoReprogramacion { get; set; }
     public Guid IdempotencyKey { get; set; }
 }
 
@@ -58,9 +54,8 @@ public sealed class ListarCitasRequestDto
     public int? PacienteId { get; set; }
     public int? MedicoId { get; set; }
     public int? SedeId { get; set; }
+    public int? ServicioId { get; set; }
     public string? Estado { get; set; }
     public DateTime? FechaDesde { get; set; }
     public DateTime? FechaHasta { get; set; }
-    public int Pagina { get; set; } = 1;
-    public int TamanoPagina { get; set; } = 20;
 }

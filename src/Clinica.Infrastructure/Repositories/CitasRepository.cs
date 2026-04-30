@@ -95,12 +95,13 @@ public sealed class CitasRepository
         return await _executor.QueryAsync(
             "dbo.sp_Cita_Listar",
             [
-                new SqlParameter("@PacienteId", (object?)filtros.PacienteId ?? DBNull.Value),
-                new SqlParameter("@MedicoId",   (object?)filtros.MedicoId ?? DBNull.Value),
-                new SqlParameter("@SedeId",     (object?)filtros.SedeId ?? DBNull.Value),
-                new SqlParameter("@Estado",     (object?)filtros.Estado ?? DBNull.Value),
-                new SqlParameter("@FechaDesde", (object?)filtros.FechaDesde ?? DBNull.Value),
-                new SqlParameter("@FechaHasta", (object?)filtros.FechaHasta ?? DBNull.Value)
+                new SqlParameter("@PacienteId",  (object?)filtros.PacienteId ?? DBNull.Value),
+                new SqlParameter("@MedicoId",    (object?)filtros.MedicoId ?? DBNull.Value),
+                new SqlParameter("@SedeId",      (object?)filtros.SedeId ?? DBNull.Value),
+                new SqlParameter("@ServicioId",  (object?)filtros.ServicioId ?? DBNull.Value),
+                new SqlParameter("@Estado",      (object?)filtros.Estado ?? DBNull.Value),
+                new SqlParameter("@FechaDesde",  (object?)filtros.FechaDesde ?? DBNull.Value),
+                new SqlParameter("@FechaHasta",  (object?)filtros.FechaHasta ?? DBNull.Value)
             ],
             reader => new CitaResponseDto
             {
