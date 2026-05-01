@@ -9,9 +9,10 @@ public interface IAuthService
 
     Task<(bool Success, UserProfileDto? Data)>
         GetMeAsync(int usuarioId);
-<<<<<<< HEAD
-=======
 
-        Task<(bool Success, string? ErrorCode, string Message, object? Data)> RegistrarPacienteAsync(RegistroRequestDto dto);
->>>>>>> cfa6c36deadf418d9d4adb47efabaeb772fa5793
+    Task<(bool Success, string? ErrorCode, string Message, RegistroUsuarioResponseDto? Data)>
+        RegistrarUsuarioAsync(RegistroUsuarioRequestDto request);
+
+    Task<(bool Success, string? ErrorCode, string Message, object? Data)>
+        RegistrarPacienteAsync(RegistroRequestDto dto);
 }
