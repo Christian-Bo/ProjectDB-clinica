@@ -11,4 +11,7 @@ public sealed class PasswordHasher
 
     public bool Verify(string password, string hash)
         => BCrypt.Net.BCrypt.Verify(password, hash);
+
+    public string GenerateSalt()
+        => BCrypt.Net.BCrypt.GenerateSalt(WorkFactor);
 }

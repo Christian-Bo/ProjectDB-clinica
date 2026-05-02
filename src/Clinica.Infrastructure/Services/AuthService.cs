@@ -38,12 +38,7 @@ public sealed class AuthService : IAuthService
         if (usuario.Estado != "ACTIVO")
             return (false, "CUENTA_INACTIVA", "La cuenta no esta activa.", null);
 
-        Console.WriteLine($"=== DEBUG LOGIN ===");
-        Console.WriteLine($"Password: [{request.Password}]");
-        Console.WriteLine($"Hash: [{usuario.PasswordHash}]");
         var verificacion = _hasher.Verify(request.Password, usuario.PasswordHash);
-        Console.WriteLine($"Verificacion: {verificacion}");
-        Console.WriteLine($"==================");
 
         if (!verificacion)
         {
@@ -103,5 +98,59 @@ public sealed class AuthService : IAuthService
             RequiereCambio = usuario.RequiereCambioPassword,
             Roles          = roles
         });
+    }
+
+    public async Task<(bool Success, string? ErrorCode, string Message, RegistroUsuarioResponseDto? Data)>
+        RegistrarUsuarioAsync(RegistroUsuarioRequestDto request)
+    {
+        var existente = await _repo.ObtenerPorUsernameAsync(request.NombreUsuario);
+        if (existente is not null)
+            return (false, "USUARIO_YA_EXISTE", "El nombre de usuario ya esta en uso.", null);
+
+        var existentePorCorreo = await _repo.ObtenerPorUsernameAsync(request.CorreoElectronico);
+        if (existentePorCorreo is not null)
+            return (false, "CORREO_YA_EXISTE", "El correo electronico ya esta registrado.", null);
+
+        var salt         = _hasher.GenerateSalt();
+        var passwordHash = _hasher.Hash(request.Password);
+
+        var usuarioId = await _repo.CrearUsuarioAsync(
+            request.NombreUsuario, request.CorreoElectronico,
+            passwordHash, salt, request.Nombres,
+            request.Apellidos, request.Telefono);
+
+        if (usuarioId == 0)
+            return (false, "ERROR_CREAR_USUARIO", "No se pudo crear el usuario.", null);
+
+        await _repo.AsignarRolAsync(usuarioId, request.Rol);
+
+        return (true, null, "Usuario registrado correctamente.", new RegistroUsuarioResponseDto
+        {
+            UsuarioId      = usuarioId,
+            NombreUsuario  = request.NombreUsuario,
+            NombreCompleto = $"{request.Nombres} {request.Apellidos}",
+            Email          = request.CorreoElectronico,
+            Estado         = "ACTIVO",
+            Rol            = request.Rol
+        });
+    }
+
+    public async Task<(bool Success, string? ErrorCode, string Message, object? Data)>
+        RegistrarPacienteAsync(RegistroRequestDto dto)
+    {
+        var passwordHash = _hasher.Hash(dto.Password);
+        var salt         = Guid.NewGuid().ToString();
+
+        var result = await _repo.RegistrarPacienteAsync(
+            dto.Nombres, dto.Apellidos, dto.CorreoElectronico,
+            passwordHash, salt, dto.Telefono,
+            dto.TipoDocumento, dto.NumeroDocumento,
+            dto.FechaNacimiento, dto.Genero,
+            dto.Nacionalidad, dto.TipoSangre);
+
+        if (!result.Success)
+            return (false, result.ErrorCode, result.Message, null);
+
+        return (true, null, result.Message, new { result.UsuarioId, result.PacienteId });
     }
 }
