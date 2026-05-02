@@ -2,15 +2,12 @@ using Clinica.Application.Contracts;
 using Clinica.Infrastructure.Database;
 using Clinica.Infrastructure.HostedServices;
 using Clinica.Infrastructure.Repositories;
+using Clinica.Infrastructure.Security;
 using Clinica.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Clinica.Infrastructure;
 
-// -----------------------------------------------------------------------------
-// Registro centralizado de infraestructura.
-// Llama AddInfrastructure() desde Program.cs.
-// -----------------------------------------------------------------------------
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
@@ -18,6 +15,11 @@ public static class DependencyInjection
         // Base de datos
         services.AddScoped<DatabaseConnection>();
         services.AddScoped<SqlExecutor>();
+
+        // Auth — Dev1
+        services.AddScoped<AuthRepository>();
+        services.AddScoped<PasswordHasher>();
+        services.AddScoped<JwtTokenGenerator>();
 
         // Repositorios — Dev2
         services.AddScoped<PacientesRepository>();
