@@ -27,11 +27,22 @@ public sealed class PacientesService : IPacientesService
         var result = await _repo.UpsertAsync(dto);
 
         if (!result.Success)
-            throw new BusinessException(result.Codigo, result.Mensaje);
+            throw new BusinessException(result.Mensaje, result.Codigo);
 
-        var pacienteId = dto.PacienteId ?? int.Parse(result.Codigo.Split(':').Last());
+        var pacienteId = dto.PacienteId ?? GetRequiredPacienteId(result);
         var paciente = await _repo.ObtenerAsync(pacienteId);
         return paciente!;
+    }
+
+
+    private static int GetRequiredPacienteId(Clinica.Infrastructure.Database.SpResult result)
+    {
+        if (result.EntityId.HasValue)
+        {
+            return checked((int)result.EntityId.Value);
+        }
+
+        throw new BusinessException("El SP no devolvio el PacienteId.", "ERROR_INTERNO");
     }
 
     public async Task<List<AlergiaResponseDto>> ListarAlergiasAsync(int pacienteId)
@@ -43,14 +54,14 @@ public sealed class PacientesService : IPacientesService
     {
         var result = await _repo.AgregarAlergiaAsync(pacienteId, dto);
         if (!result.Success)
-            throw new BusinessException(result.Codigo, result.Mensaje);
+            throw new BusinessException(result.Mensaje, result.Codigo);
     }
 
     public async Task QuitarAlergiaAsync(int pacienteId, int alergiaId)
     {
         var result = await _repo.QuitarAlergiaAsync(pacienteId, alergiaId);
         if (!result.Success)
-            throw new BusinessException(result.Codigo, result.Mensaje);
+            throw new BusinessException(result.Mensaje, result.Codigo);
     }
     public async Task<PacienteResponseDto?> ObtenerPorUsuarioAsync(int usuarioId)
     {

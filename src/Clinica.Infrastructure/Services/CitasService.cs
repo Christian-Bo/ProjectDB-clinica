@@ -19,13 +19,13 @@ public sealed class CitasService : ICitasService
         var result = await _repo.ReservarAsync(dto, idempotencyKey, usuarioId);
 
         if (result.HttpStatus == 409)
-            throw new ConflictException(result.Codigo, result.Mensaje);
+            throw new ConflictException(result.Mensaje, result.Codigo);
 
         if (!result.Success)
-            throw new BusinessException(result.Codigo, result.Mensaje);
+            throw new BusinessException(result.Mensaje, result.Codigo);
 
         var citaId = result.EntityId
-            ?? throw new BusinessException("ERROR_INTERNO", "El SP no devolvio el CitaId.");
+            ?? throw new BusinessException("El SP no devolvio el CitaId.", "ERROR_INTERNO");
 
         var cita = await _repo.ObtenerAsync(citaId);
         return cita!;
@@ -36,10 +36,10 @@ public sealed class CitasService : ICitasService
         var result = await _repo.ConfirmarAsync(citaId, dto.UsuarioId, idempotencyKey);
 
         if (result.HttpStatus == 409)
-            throw new ConflictException(result.Codigo, result.Mensaje);
+            throw new ConflictException(result.Mensaje, result.Codigo);
 
         if (!result.Success)
-            throw new BusinessException(result.Codigo, result.Mensaje);
+            throw new BusinessException(result.Mensaje, result.Codigo);
 
         var cita = await _repo.ObtenerAsync(citaId);
         return cita!;
@@ -49,7 +49,7 @@ public sealed class CitasService : ICitasService
     {
         var result = await _repo.CancelarAsync(citaId, dto.UsuarioId, dto.MotivoCancelacion);
         if (!result.Success)
-            throw new BusinessException(result.Codigo, result.Mensaje);
+            throw new BusinessException(result.Mensaje, result.Codigo);
     }
 
     public async Task ReprogramarAsync(long citaId, ReprogramarCitaRequestDto dto)
@@ -57,10 +57,10 @@ public sealed class CitasService : ICitasService
         var result = await _repo.ReprogramarAsync(citaId, dto);
 
         if (result.HttpStatus == 409)
-            throw new ConflictException(result.Codigo, result.Mensaje);
+            throw new ConflictException(result.Mensaje, result.Codigo);
 
         if (!result.Success)
-            throw new BusinessException(result.Codigo, result.Mensaje);
+            throw new BusinessException(result.Mensaje, result.Codigo);
     }
 
     public async Task<CitaResponseDto?> ObtenerAsync(long citaId)

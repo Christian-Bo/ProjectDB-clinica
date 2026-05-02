@@ -1,197 +1,137 @@
 using Clinica.Application.Contracts;
-using Clinica.Application.Models.Tickets;
-using Microsoft.AspNetCore.Authorization;
+using Clinica.Application.DTOs.Common;
+using Clinica.Application.DTOs.Tickets;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Clinica.API.Controllers;
 
-// -----------------------------------------------------------------------------
-// Modulo 3 - Recepcion / Tickets / Cola.
-// Este controlador cubre el ciclo de vida del ticket:
-// generar -> llamar -> en atencion -> finalizar -> no-show.
-// Tambien expone endpoints de consulta para que el frontend trabaje con datos
-// utiles, enriquecidos y faciles de mostrar al usuario.
-// -----------------------------------------------------------------------------
-[AllowAnonymous]
+/// <summary>
+/// Módulo 3 — Tickets.
+/// Recibe HTTP, valida formato, delega al servicio, devuelve JSON.
+/// Sin SQL. Sin lógica de negocio crítica aquí.
+/// </summary>
+[ApiController]
 [Route("api/tickets")]
-public sealed class TicketsController : BaseController
+[Produces("application/json")]
+public sealed class TicketsController(ITicketsService service) : ControllerBase
 {
-    private readonly ITicketQueueService _ticketQueueService;
-
-    public TicketsController(ITicketQueueService ticketQueueService)
-    {
-        _ticketQueueService = ticketQueueService;
-    }
-
-    [HttpPost("generar")]
-    public async Task<IActionResult> Generar(
-        [FromBody] GenerateTicketRequestDto request,
-        CancellationToken cancellationToken)
-    {
-        if (!TryGetIdempotencyKey(out var idempotencyKey, out var errorResult))
-        {
-            return errorResult!;
-        }
-
-        request.UsuarioId = ResolveUserId(request.UsuarioId);
-
-        var result = await _ticketQueueService.GenerateTicketAsync(request, idempotencyKey, cancellationToken);
-        return ToActionResult(result);
-    }
-
-    // -------------------------------------------------------------------------
-    // Endpoint mas amigable para el caso de ticket especial.
-    // El frontend no necesita recordar que debe enviar PrioridadSolicitada=ESPECIAL;
-    // este endpoint lo normaliza automaticamente.
-    // -------------------------------------------------------------------------
-    [HttpPost("generar-especial")]
-    public async Task<IActionResult> GenerarEspecial(
-        [FromBody] SpecialTicketRequestDto request,
-        CancellationToken cancellationToken)
-    {
-        if (!TryGetIdempotencyKey(out var idempotencyKey, out var errorResult))
-        {
-            return errorResult!;
-        }
-
-        var normalizedRequest = new GenerateTicketRequestDto
-        {
-            CitaId = request.CitaId,
-            PacienteId = request.PacienteId,
-            SedeId = request.SedeId,
-            ServicioId = request.ServicioId,
-            MedicoId = request.MedicoId,
-            PrioridadSolicitada = "ESPECIAL",
-            MotivoEspecial = request.MotivoEspecial,
-            UsuarioId = ResolveUserId(request.UsuarioId)
-        };
-
-        var result = await _ticketQueueService.GenerateTicketAsync(normalizedRequest, idempotencyKey, cancellationToken);
-        return ToActionResult(result);
-    }
-
-    [HttpPost("siguiente")]
-    public async Task<IActionResult> LlamarSiguiente(
-        [FromBody] CallNextTicketRequestDto request,
-        CancellationToken cancellationToken)
-    {
-        if (!TryGetIdempotencyKey(out var idempotencyKey, out var errorResult))
-        {
-            return errorResult!;
-        }
-
-        request.UsuarioId = ResolveUserId(request.UsuarioId);
-
-        var result = await _ticketQueueService.CallNextAsync(request, idempotencyKey, cancellationToken);
-        return ToActionResult(result);
-    }
-
-    [HttpPost("{ticketId:long}/en-atencion")]
-    public async Task<IActionResult> MarcarEnAtencion(long ticketId, CancellationToken cancellationToken)
-    {
-        var result = await _ticketQueueService.MarkInAttentionAsync(ticketId, cancellationToken);
-        return ToActionResult(result);
-    }
-
-    [HttpPost("{ticketId:long}/finalizar")]
-    public async Task<IActionResult> Finalizar(
-        long ticketId,
-        [FromBody] FinalizeTicketRequestDto request,
-        CancellationToken cancellationToken)
-    {
-        var result = await _ticketQueueService.FinishAsync(ticketId, request, cancellationToken);
-        return ToActionResult(result);
-    }
-
-    [HttpPost("no-show/procesar")]
-    public async Task<IActionResult> ProcesarNoShow(CancellationToken cancellationToken)
-    {
-        var result = await _ticketQueueService.ProcessNoShowAsync(cancellationToken);
-        return ToActionResult(result);
-    }
+    // ─── GET /api/tickets ────────────────────────────────────────────────────
 
     [HttpGet]
-    public async Task<IActionResult> Listar([FromQuery] TicketListFiltersDto filters, CancellationToken cancellationToken)
+    public async Task<IActionResult> Listar(
+        [FromQuery] int? sedeId,
+        [FromQuery] int? servicioId,
+        [FromQuery] string? estado,
+        CancellationToken ct)
     {
-        var result = await _ticketQueueService.ListAsync(filters, cancellationToken);
-        return ToActionResult(result);
+        var tickets = await service.ListarTicketsAsync(sedeId, servicioId, estado, ct);
+        return Ok(ApiResponse<List<Application.DTOs.Tickets.TicketDto>>.Success(tickets));
     }
+
+    // ─── GET /api/tickets/resumen-operativo ─────────────────────────────────
 
     [HttpGet("resumen-operativo")]
     public async Task<IActionResult> ResumenOperativo(
         [FromQuery] int? sedeId,
         [FromQuery] int? servicioId,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
-        var result = await _ticketQueueService.GetOperationalSummaryAsync(sedeId, servicioId, cancellationToken);
-        return ToActionResult(result);
+        var resumen = await service.ObtenerResumenOperativoAsync(sedeId, servicioId, ct);
+        return Ok(ApiResponse<ResumenOperativoDto>.Success(resumen));
     }
+
+    // ─── GET /api/tickets/{ticketId} ─────────────────────────────────────────
 
     [HttpGet("{ticketId:long}")]
-    public async Task<IActionResult> ObtenerPorId(long ticketId, CancellationToken cancellationToken)
+    public async Task<IActionResult> ObtenerPorId(long ticketId, CancellationToken ct)
     {
-        var result = await _ticketQueueService.GetByIdAsync(ticketId, cancellationToken);
-        return ToActionResult(result);
+        var ticket = await service.ObtenerTicketAsync(ticketId, ct);
+        return Ok(ApiResponse<TicketDto>.Success(ticket));
     }
 
-    [HttpGet("por-numero/{numeroTicket}")]
-    public async Task<IActionResult> ObtenerPorNumero(string numeroTicket, CancellationToken cancellationToken)
+    // ─── GET /api/tickets/por-numero/{numero} ────────────────────────────────
+
+    [HttpGet("por-numero/{numero}")]
+    public async Task<IActionResult> ObtenerPorNumero(string numero, CancellationToken ct)
     {
-        var result = await _ticketQueueService.GetByNumberAsync(numeroTicket, cancellationToken);
-        return ToActionResult(result);
+        var ticket = await service.ObtenerTicketPorNumeroAsync(numero, ct);
+        return Ok(ApiResponse<TicketDto>.Success(ticket));
     }
 
-    [AllowAnonymous]
+    // ─── GET /api/tickets/mi-ticket ─────────────────────────────────────────
+
     [HttpGet("mi-ticket")]
     public async Task<IActionResult> MiTicket(
         [FromQuery] long? ticketId,
         [FromQuery] string? numeroTicket,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
-        if (ticketId is null && string.IsNullOrWhiteSpace(numeroTicket))
-        {
-            return BadRequest(new
-            {
-                ok = false,
-                code = "FILTRO_REQUERIDO",
-                message = "Debes enviar ticketId o numeroTicket para consultar el estado del ticket."
-            });
-        }
+        var ticket = await service.ObtenerMiTicketAsync(ticketId, numeroTicket, ct);
+        return Ok(ApiResponse<TicketDto>.Success(ticket));
+    }
 
-        var result = ticketId.HasValue
-            ? await _ticketQueueService.GetByIdAsync(ticketId.Value, cancellationToken)
-            : await _ticketQueueService.GetByNumberAsync(numeroTicket!, cancellationToken);
+    // ─── POST /api/tickets/generar ──────────────────────────────────────────
 
-        if (!result.Success || result.Data is null)
-        {
-            return ToActionResult(result);
-        }
+    [HttpPost("generar")]
+    public async Task<IActionResult> Generar(
+        [FromBody] GenerarTicketRequest request,
+        [FromHeader(Name = "Idempotency-Key")] Guid? idempotencyKey,
+        CancellationToken ct)
+    {
+        var ticket = await service.GenerarTicketAsync(request, idempotencyKey, ct);
+        return StatusCode(201, ApiResponse<TicketDto>.Success(ticket, "Ticket generado correctamente."));
+    }
 
-        var publicData = new PublicTicketStatusDto
-        {
-            TicketId = result.Data.TicketId,
-            NumeroTicket = result.Data.NumeroTicket,
-            Estado = result.Data.Estado,
-            Prioridad = result.Data.Prioridad,
-            EsEspecial = result.Data.EsEspecial,
-            MotivoEspecial = result.Data.MotivoEspecial,
-            SedeNombre = result.Data.SedeNombre,
-            ServicioNombre = result.Data.ServicioNombre,
-            ConsultorioNombre = result.Data.ConsultorioNombre,
-            MedicoNombre = result.Data.MedicoNombre,
-            FechaGeneracion = result.Data.FechaGeneracion,
-            FechaLlamado = result.Data.FechaLlamado,
-            FechaInicioAtencion = result.Data.FechaInicioAtencion,
-            FechaFinAtencion = result.Data.FechaFinAtencion,
-            ContadorLlamados = result.Data.ContadorLlamados
-        };
+    // ─── POST /api/tickets/generar-especial ─────────────────────────────────
 
-        return Ok(new
-        {
-            ok = true,
-            code = result.Code,
-            message = result.Message,
-            data = publicData
-        });
+    [HttpPost("generar-especial")]
+    public async Task<IActionResult> GenerarEspecial(
+        [FromBody] GenerarTicketEspecialRequest request,
+        [FromHeader(Name = "Idempotency-Key")] Guid? idempotencyKey,
+        CancellationToken ct)
+    {
+        var ticket = await service.GenerarTicketEspecialAsync(request, idempotencyKey, ct);
+        return StatusCode(201, ApiResponse<TicketDto>.Success(ticket, "Ticket especial generado."));
+    }
+
+    // ─── POST /api/tickets/siguiente ────────────────────────────────────────
+
+    [HttpPost("siguiente")]
+    public async Task<IActionResult> LlamarSiguiente(
+        [FromBody] LlamarSiguienteRequest request,
+        CancellationToken ct)
+    {
+        var ticket = await service.LlamarSiguienteAsync(request, ct);
+        return Ok(ApiResponse<TicketDto>.Success(ticket, "Ticket llamado correctamente."));
+    }
+
+    // ─── POST /api/tickets/{ticketId}/en-atencion ────────────────────────────
+
+    [HttpPost("{ticketId:long}/en-atencion")]
+    public async Task<IActionResult> MarcarEnAtencion(long ticketId, CancellationToken ct)
+    {
+        var ticket = await service.MarcarEnAtencionAsync(ticketId, ct);
+        return Ok(ApiResponse<TicketDto>.Success(ticket, "Ticket marcado en atención."));
+    }
+
+    // ─── POST /api/tickets/{ticketId}/finalizar ──────────────────────────────
+
+    [HttpPost("{ticketId:long}/finalizar")]
+    public async Task<IActionResult> Finalizar(
+        long ticketId,
+        [FromBody] FinalizarTicketRequest request,
+        CancellationToken ct)
+    {
+        var ticket = await service.FinalizarTicketAsync(ticketId, request.Motivo, ct);
+        return Ok(ApiResponse<TicketDto>.Success(ticket, "Ticket finalizado."));
+    }
+
+    // ─── POST /api/tickets/no-show/procesar ─────────────────────────────────
+
+    [HttpPost("no-show/procesar")]
+    public async Task<IActionResult> ProcesarNoShow(CancellationToken ct)
+    {
+        var result = await service.ProcesarNoShowAsync(ct);
+        return Ok(ApiResponse<NoShowResultDto>.Success(result, $"Procesados: {result.RegistrosProcesados} tickets."));
     }
 }

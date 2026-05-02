@@ -1,129 +1,53 @@
-using System.Text.Json.Serialization;
-using Clinica.API.Configuration;
 using Clinica.API.Middlewares;
 using Clinica.Infrastructure;
-using Clinica.Infrastructure.Database;
-using Clinica.Infrastructure.Options;
-using Microsoft.OpenApi.Models;
-using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-
 
 var builder = WebApplication.CreateBuilder(args);
 
-// -----------------------------------------------------------------------------
-// 1) Carga de configuracion robusta.
-//    - appsettings.json
-//    - appsettings.{Environment}.json
-//    - .env y .env.local (desarrollo local)
-//    - variables de entorno reales (Railway, Windows, Linux)
-// -----------------------------------------------------------------------------
-EnvironmentBootstrapper.LoadFromDotEnv(builder.Environment.ContentRootPath);
-
-builder.Configuration
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
-    .AddEnvironmentVariables();
-
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.ConfigureKestrel(options => options.ListenAnyIP(int.Parse(port)));
-
-builder.Services.Configure<TicketQueueWorkerOptions>(
-    builder.Configuration.GetSection(TicketQueueWorkerOptions.SectionName));
-
-builder.Services.AddInfrastructure();
-
-//builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-//    .AddJwtBearer(options =>
-//    {
-//        options.TokenValidationParameters = new TokenValidationParameters
-//        {
-//            ValidateIssuer           = true,
-//            ValidateAudience         = true,
-//            ValidateLifetime         = true,
-//            ValidateIssuerSigningKey = true,
-//            ValidIssuer              = builder.Configuration["Jwt:Issuer"],
-//            ValidAudience            = builder.Configuration["Jwt:Audience"],
-//            IssuerSigningKey         = new SymmetricSecurityKey(
-//                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
-//        };
-//    });
-
-builder.Services.AddAuthorization();
-builder.Services
-    .AddControllers()
-    .AddJsonOptions(options =>
-    {
-        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
-    });
-
+// ── Servicios ────────────────────────────────────────────────────────────────
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-    options.SwaggerDoc("v1", new OpenApiInfo
+    options.SwaggerDoc("v1", new()
     {
-        Title = "Clinica API",
+        Title   = "Clínica Integral API — Módulo 3",
         Version = "v1",
-        Description = "API .NET 8 para ClinicaDB con enfoque BD-first y modulo 3 de Recepcion/Tickets/Pantalla publica"
-    });
-
-    options.AddSecurityDefinition("Idempotency-Key", new OpenApiSecurityScheme
-    {
-        Name = "Idempotency-Key",
-        Type = SecuritySchemeType.ApiKey,
-        In = ParameterLocation.Header,
-        Description = "GUID opcional para evitar duplicados en operaciones criticas como generar ticket y llamar siguiente."
+        Description = "Recepción, Tickets y Pantalla Pública",
     });
 });
 
-// -----------------------------------------------------------------------------
-// 2) CORS flexible.
-//    Primero intenta leer el arreglo tradicional Cors:AllowedOrigins.
-//    Si no existe, usa una variable CSV llamada CORS_ALLOWED_ORIGINS.
-// -----------------------------------------------------------------------------
-var allowedOrigins = builder.Configuration
-    .GetSection("Cors:AllowedOrigins")
-    .Get<string[]>();
+// Módulo 3: inyección de infraestructura (repositorios y servicios)
+builder.Services.AddInfrastructure();
 
-if (allowedOrigins is null || allowedOrigins.Length == 0)
-{
-    var csvOrigins = builder.Configuration["CORS_ALLOWED_ORIGINS"]
-        ?? builder.Configuration["Cors:AllowedOriginsCsv"];
-
-    allowedOrigins = string.IsNullOrWhiteSpace(csvOrigins)
-        ? new[] { "http://localhost:3000" }
-        : csvOrigins.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-}
-
+// CORS — permite el origen del frontend (configurado en variable de entorno)
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("ClinicaPolicy", policy =>
+    options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins(allowedOrigins)
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        var allowedOrigins = builder.Configuration
+            .GetSection("Cors:AllowedOrigins")
+            .Get<string[]>() ?? ["*"];
+
+        policy
+            .WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .WithExposedHeaders("Idempotency-Key");
     });
 });
 
 var app = builder.Build();
 
-// -----------------------------------------------------------------------------
-// 3) Mensaje diagnostico de arranque.
-//    Esto ayuda a detectar inmediatamente si la ConnectionString se cargo o no.
-// -----------------------------------------------------------------------------
-var connectionStringLoaded = DatabaseConnection.TryResolveConnectionString(builder.Configuration, out _);
-Console.WriteLine(connectionStringLoaded
-    ? ">> ConnectionString 'DefaultConnection' detectada correctamente."
-    : ">> ADVERTENCIA: No se detecto 'DefaultConnection'. Revisa appsettings, .env o variables de entorno.");
+// ── Middlewares ──────────────────────────────────────────────────────────────
+app.UseGlobalExceptionHandler(); // siempre primero
 
-app.UseSwagger();
-app.UseSwaggerUI();
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
-app.UseMiddleware<GlobalExceptionMiddleware>();
-app.UseCors("ClinicaPolicy");
-//app.UseAuthentication();    
-app.UseAuthorization();
+app.UseCors();
 app.MapControllers();
 
 app.Run();

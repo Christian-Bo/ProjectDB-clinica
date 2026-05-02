@@ -1,84 +1,24 @@
-using System.Security.Claims;
-using Clinica.Application.Contracts;
-using Clinica.Application.DTOs.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Clinica.API.Controllers;
 
-[ApiController]
+// -----------------------------------------------------------------------------
+// Controlador base de autenticacion.
+// Se deja listo para que luego conecten login real con sus SPs de seguridad.
+// -----------------------------------------------------------------------------
 [Route("api/auth")]
-public sealed class AuthController : ControllerBase
+public sealed class AuthController : BaseController
 {
-    private readonly IAuthService _authService;
-
-    public AuthController(IAuthService authService)
-    {
-        _authService = authService;
-    }
-
-    [HttpPost("login")]
     [AllowAnonymous]
-    public async Task<IActionResult> Login([FromBody] LoginRequestDto dto)
+    [HttpGet("status")]
+    public IActionResult Status()
     {
-        if (!ModelState.IsValid)
-            return BadRequest(new { ok = false, message = "Datos invalidos." });
-
-        var (success, errorCode, message, data) = await _authService.LoginAsync(dto);
-
-        if (!success)
-            return Unauthorized(new { ok = false, errorCode, message });
-
-        return Ok(new { ok = true, message, data });
-    }
-
-    [HttpGet("me")]
-    [Authorize]
-    public async Task<IActionResult> Me()
-    {
-        var claim = User.FindFirstValue("usuarioId");
-        if (!int.TryParse(claim, out var usuarioId))
-            return Unauthorized(new { ok = false, message = "Token invalido." });
-
-        var (success, data) = await _authService.GetMeAsync(usuarioId);
-        if (!success)
-            return NotFound(new { ok = false, message = "Usuario no encontrado." });
-
-        return Ok(new { ok = true, data });
-    }
-
-    // Dev1 — Registro de usuarios administrativos
-    [HttpPost("registro")]
-    [Authorize(Roles = "Administrador")]
-    public async Task<IActionResult> Registro([FromBody] RegistroUsuarioRequestDto dto)
-    {
-        if (!ModelState.IsValid)
-            return BadRequest(new { ok = false, message = "Datos invalidos." });
-
-        var (success, errorCode, message, data) = await _authService.RegistrarUsuarioAsync(dto);
-
-        if (!success)
-            return BadRequest(new { ok = false, errorCode, message });
-
-        return StatusCode(201, new { ok = true, message, data });
-    }
-
-    // Dev2 — Registro de pacientes
-    [HttpPost("registro-paciente")]
-    [AllowAnonymous]
-    public async Task<IActionResult> RegistroPaciente([FromBody] RegistroRequestDto dto)
-    {
-        if (!ModelState.IsValid)
-            return BadRequest(new { success = false, message = "Datos invalidos." });
-
-        var (success, errorCode, message, data) = await _authService.RegistrarPacienteAsync(dto);
-
-        if (!success)
+        return Ok(new
         {
-            var statusCode = errorCode is "CORREO_DUPLICADO" or "DOCUMENTO_DUPLICADO" ? 409 : 422;
-            return StatusCode(statusCode, new { success = false, errorCode, message });
-        }
-
-        return StatusCode(201, new { success = true, message, data });
+            modulo = "auth",
+            estado = "pendiente_de_implementar",
+            mensaje = "La conexion a BD ya puede probarse desde /api/health/db"
+        });
     }
 }

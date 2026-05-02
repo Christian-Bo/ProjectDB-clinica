@@ -1,53 +1,34 @@
-using Clinica.Application.Contracts;
-using Microsoft.AspNetCore.Authorization;
+using Clinica.Application.DTOs.Common;
+using Clinica.Infrastructure.Database;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 
 namespace Clinica.API.Controllers;
 
-[AllowAnonymous]
+[ApiController]
 [Route("api/health")]
-public sealed class HealthController : BaseController
+[Produces("application/json")]
+public sealed class HealthController(SqlExecutor db, IConfiguration config) : ControllerBase
 {
-    private readonly IDatabaseHealthService _databaseHealthService;
-
-    public HealthController(IDatabaseHealthService databaseHealthService)
-    {
-        _databaseHealthService = databaseHealthService;
-    }
-
     [HttpGet("ping")]
-    public IActionResult Ping()
-    {
-        return Ok(new
-        {
-            ok = true,
-            message = "API operativa"
-        });
-    }
+    public IActionResult Ping() =>
+        Ok(ApiResponse<object>.Success(new { message = "pong", utc = DateTime.UtcNow }));
 
     [HttpGet("db")]
-    public async Task<IActionResult> Database(CancellationToken cancellationToken)
+    public async Task<IActionResult> Db(CancellationToken ct)
     {
-        var result = await _databaseHealthService.CheckAsync(cancellationToken);
-
-        if (!result.IsSuccess)
+        try
         {
-            return StatusCode(StatusCodes.Status500InternalServerError, new
+            var dt = await db.ExecuteSpFirstTableAsync("dbo.sp_Sede_Listar", null, ct);
+            return Ok(ApiResponse<object>.Success(new
             {
-                ok = false,
-                message = "No fue posible abrir conexion con SQL Server.",
-                error = result.ErrorMessage
-            });
+                message    = "Conexión OK",
+                sedesFound = dt.Rows.Count,
+            }));
         }
-
-        return Ok(new
+        catch (Exception ex)
         {
-            ok = true,
-            message = "Conexion a SQL Server exitosa.",
-            database = result.DatabaseName,
-            serverUtcNow = result.ServerUtcNow,
-            environment = result.EnvironmentName,
-            dataSource = result.DataSource
-        });
+            return StatusCode(503, ApiResponse<object>.Fail($"BD no alcanzable: {ex.Message}", "DB_ERROR"));
+        }
     }
 }
