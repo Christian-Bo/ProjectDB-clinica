@@ -1,8 +1,6 @@
 using Clinica.Application.Contracts;
 using Clinica.Infrastructure.Database;
-using Clinica.Infrastructure.HostedServices;
 using Clinica.Infrastructure.Repositories;
-using Clinica.Infrastructure.Security;
 using Clinica.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -10,41 +8,35 @@ namespace Clinica.Infrastructure;
 
 public static class DependencyInjection
 {
+    /// <summary>
+    /// Registra todos los servicios de infraestructura.
+    /// Llamar desde Program.cs: builder.Services.AddInfrastructure();
+    /// </summary>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
-        // Base de datos
-        services.AddScoped<DatabaseConnection>();
-        services.AddScoped<SqlExecutor>();
+        // Core de acceso a datos.
+        services.AddSingleton<DatabaseConnection>();
+        services.AddSingleton<SqlExecutor>();
 
-        // Seguridad — Dev1
-        services.AddScoped<PasswordHasher>();
-        services.AddScoped<JwtTokenGenerator>();
-
-        // Repositorios — Dev1
-        services.AddScoped<AuthRepository>();
-
-        // Repositorios — Dev2
-        services.AddScoped<PacientesRepository>();
+        // Repositorios.
+        services.AddScoped<TicketsRepository>();
+        services.AddScoped<PantallaRepository>();
+        services.AddScoped<CatalogosRepository>();
         services.AddScoped<CitasRepository>();
+        services.AddScoped<PacientesRepository>();
 
-        // Servicios — Dev2
-        services.AddScoped<IPacientesService, PacientesService>();
-        services.AddScoped<ICitasService, CitasService>();
-
-        // Servicios base
-        services.AddScoped<IDatabaseHealthService, DatabaseHealthService>();
-        services.AddScoped<IAuthService, AuthService>();
-
-        // Modulo 3 — Recepcion / Tickets / Cola
-        services.AddScoped<ITicketQueueService, TicketQueueService>();
-
-        // Modulo 4 — Consulta Medica, Historia Clinica, Recetas y Ordenes
-        services.AddScoped<IConsultasService, ConsultasService>();
-        services.AddScoped<IRecetasService, RecetasService>();
-        services.AddScoped<IOrdenesService, OrdenesService>();
-
-        // Worker
-        services.AddHostedService<TicketQueueMaintenanceWorker>();
+        // Servicios de aplicación.
+        services.AddScoped<IAuthService,                 AuthService>();
+        services.AddScoped<IDatabaseHealthService,       DatabaseHealthService>();
+        services.AddScoped<ITicketQueueService,          TicketQueueService>();
+        services.AddScoped<ITicketsService,              TicketsService>();
+        services.AddScoped<IPantallaService,             PantallaService>();
+        services.AddScoped<ICatalogosRecepcionService,   CatalogosRecepcionService>();
+        services.AddScoped<ICitasService,                CitasService>();
+        services.AddScoped<IPacientesService,            PacientesService>();
+        services.AddScoped<IConsultasService,            ConsultasService>();
+        services.AddScoped<IOrdenesService,              OrdenesService>();
+        services.AddScoped<IRecetasService,              RecetasService>();
 
         return services;
     }

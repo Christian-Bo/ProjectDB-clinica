@@ -47,7 +47,6 @@ public sealed class AuthController : ControllerBase
         return Ok(new { success = true, data });
     }
 
-    // Dev1 — Registro de usuarios administrativos
     [HttpPost("registro")]
     [Authorize(Roles = "Administrador")]
     public async Task<IActionResult> Registro([FromBody] RegistroUsuarioRequestDto dto)
@@ -63,7 +62,6 @@ public sealed class AuthController : ControllerBase
         return StatusCode(201, new { success = true, message, data });
     }
 
-    // Dev2 — Registro de pacientes
     [HttpPost("registro-paciente")]
     [AllowAnonymous]
     public async Task<IActionResult> RegistroPaciente([FromBody] RegistroRequestDto dto)

@@ -1,75 +1,77 @@
+using System.Text;
 using System.Text.Json;
 using Clinica.Application.Contracts;
-using Microsoft.AspNetCore.Authorization;
+using Clinica.Application.DTOs.Common;
+using Clinica.Application.DTOs.Pantalla;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Clinica.API.Controllers;
 
-// -----------------------------------------------------------------------------
-// Controlador para la pantalla publica.
-// Incluye:
-// 1) endpoint tradicional para polling.
-// 2) endpoint SSE (Server-Sent Events) para actualizacion continua simple,
-//    muy util cuando aun no se desea introducir SignalR o WebSockets.
-// -----------------------------------------------------------------------------
-[AllowAnonymous]
+/// <summary>
+/// Módulo 3 — Pantalla pública.
+/// Expone la cola actual mediante polling REST y opcionalmente Server-Sent Events (SSE).
+/// </summary>
+[ApiController]
 [Route("api/pantalla")]
-public sealed class PantallaController : BaseController
+[Produces("application/json")]
+public sealed class PantallaController(IPantallaService service) : ControllerBase
 {
-    private readonly ITicketQueueService _ticketQueueService;
-
-    public PantallaController(ITicketQueueService ticketQueueService)
+    private static readonly JsonSerializerOptions JsonOpts = new()
     {
-        _ticketQueueService = ticketQueueService;
-    }
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
+
+    // ─── GET /api/pantalla/cola ──────────────────────────────────────────────
 
     [HttpGet("cola")]
-    public async Task<IActionResult> ObtenerCola([FromQuery] int sedeId, [FromQuery] int servicioId, CancellationToken cancellationToken)
+    public async Task<IActionResult> ObtenerCola(
+        [FromQuery] int sedeId,
+        [FromQuery] int servicioId,
+        CancellationToken ct)
     {
-        var result = await _ticketQueueService.GetQueueDisplayAsync(sedeId, servicioId, cancellationToken);
-        return ToActionResult(result);
+        if (sedeId <= 0 || servicioId <= 0)
+            return BadRequest(ApiResponse<object>.Fail("sedeId y servicioId son requeridos.", "PARAM_INVALIDO"));
+
+        var cola = await service.ObtenerColaAsync(sedeId, servicioId, ct);
+        return Ok(ApiResponse<PantallaColaDto>.Success(cola));
     }
 
-    // -------------------------------------------------------------------------
-    // SSE: el frontend puede abrir esta ruta y recibir snapshots cada cierto
-    // numero de segundos. Es una opcion muy amigable para una pantalla publica.
-    // -------------------------------------------------------------------------
+    // ─── GET /api/pantalla/cola/stream (Server-Sent Events) ─────────────────
+    // El frontend lo usa opcionalmente; si no está disponible cae a polling.
+
     [HttpGet("cola/stream")]
     public async Task StreamCola(
         [FromQuery] int sedeId,
         [FromQuery] int servicioId,
-        [FromQuery] int intervalSeconds = 3,
-        CancellationToken cancellationToken = default)
+        [FromQuery] int intervalSeconds = 4,
+        CancellationToken ct = default)
     {
-        intervalSeconds = Math.Clamp(intervalSeconds, 1, 20);
+        if (sedeId <= 0 || servicioId <= 0)
+        {
+            Response.StatusCode = 400;
+            return;
+        }
 
-        Response.ContentType = "text/event-stream";
-        Response.Headers["Cache-Control"] = "no-cache";
-        Response.Headers["X-Accel-Buffering"] = "no";
+        Response.Headers.Append("Content-Type", "text/event-stream");
+        Response.Headers.Append("Cache-Control", "no-cache");
+        Response.Headers.Append("X-Accel-Buffering", "no");
+
+        var interval = TimeSpan.FromSeconds(Math.Clamp(intervalSeconds, 2, 30));
 
         try
         {
-            while (!cancellationToken.IsCancellationRequested)
+            while (!ct.IsCancellationRequested)
             {
-                var result = await _ticketQueueService.GetQueueDisplayAsync(sedeId, servicioId, cancellationToken);
-                var payload = JsonSerializer.Serialize(new
-                {
-                    ok = result.Success,
-                    code = result.Code,
-                    message = result.Message,
-                    data = result.Data
-                });
+                var cola    = await service.ObtenerColaAsync(sedeId, servicioId, ct);
+                var payload = JsonSerializer.Serialize(
+                    ApiResponse<PantallaColaDto>.Success(cola), JsonOpts);
 
-                await Response.WriteAsync("event: cola\n", cancellationToken);
-                await Response.WriteAsync($"data: {payload}\n\n", cancellationToken);
-                await Response.Body.FlushAsync(cancellationToken);
-
-                await Task.Delay(TimeSpan.FromSeconds(intervalSeconds), cancellationToken);
+                var msg = $"event: cola\ndata: {payload}\n\n";
+                await Response.WriteAsync(msg, Encoding.UTF8, ct);
+                await Response.Body.FlushAsync(ct);
+                await Task.Delay(interval, ct);
             }
         }
-        catch (OperationCanceledException)
-        {
-            // La desconexion del cliente es normal en SSE.
-        }
+        catch (OperationCanceledException) { /* cliente desconectado — normal */ }
     }
 }

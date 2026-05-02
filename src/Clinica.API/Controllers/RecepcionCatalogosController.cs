@@ -1,54 +1,48 @@
 using Clinica.Application.Contracts;
-using Microsoft.AspNetCore.Authorization;
+using Clinica.Application.DTOs.Catalogos;
+using Clinica.Application.DTOs.Common;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Clinica.API.Controllers;
 
-// -----------------------------------------------------------------------------
-// Endpoints de apoyo para formularios y combos del frontend.
-// La idea es que el usuario vea listas claras con nombres y etiquetas amigables,
-// en lugar de trabajar manualmente con ids sueltos.
-// -----------------------------------------------------------------------------
-[AllowAnonymous]
+/// <summary>
+/// Módulo 3 — Catálogos de recepción.
+/// Provee los combos necesarios para la UI: sedes, servicios, estaciones, pacientes y citas.
+/// </summary>
+[ApiController]
 [Route("api/recepcion/catalogos")]
-public sealed class RecepcionCatalogosController : BaseController
+[Produces("application/json")]
+public sealed class RecepcionCatalogosController(ICatalogosRecepcionService service) : ControllerBase
 {
-    private readonly ITicketQueueService _ticketQueueService;
-
-    public RecepcionCatalogosController(ITicketQueueService ticketQueueService)
-    {
-        _ticketQueueService = ticketQueueService;
-    }
-
     [HttpGet("sedes")]
-    public async Task<IActionResult> Sedes(CancellationToken cancellationToken)
+    public async Task<IActionResult> Sedes(CancellationToken ct)
     {
-        var result = await _ticketQueueService.GetSedesAsync(cancellationToken);
-        return ToActionResult(result);
+        var items = await service.ListarSedesAsync(ct);
+        return Ok(ApiResponse<List<CatalogoItemDto>>.Success(items));
     }
 
     [HttpGet("servicios")]
-    public async Task<IActionResult> Servicios([FromQuery] int? sedeId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Servicios([FromQuery] int? sedeId, CancellationToken ct)
     {
-        var result = await _ticketQueueService.GetServiciosAsync(sedeId, cancellationToken);
-        return ToActionResult(result);
+        var items = await service.ListarServiciosAsync(sedeId, ct);
+        return Ok(ApiResponse<List<CatalogoItemDto>>.Success(items));
     }
 
     [HttpGet("estaciones")]
-    public async Task<IActionResult> Estaciones(
-        [FromQuery] int? sedeId,
-        [FromQuery] string? tipoEstacion,
-        CancellationToken cancellationToken)
+    public async Task<IActionResult> Estaciones([FromQuery] int? sedeId, CancellationToken ct)
     {
-        var result = await _ticketQueueService.GetStationsAsync(sedeId, tipoEstacion, cancellationToken);
-        return ToActionResult(result);
+        var items = await service.ListarEstacionesAsync(sedeId, ct);
+        return Ok(ApiResponse<List<CatalogoItemDto>>.Success(items));
     }
 
     [HttpGet("pacientes")]
-    public async Task<IActionResult> Pacientes([FromQuery] string? texto, CancellationToken cancellationToken)
+    public async Task<IActionResult> Pacientes(
+        [FromQuery] string? texto,
+        [FromQuery] int limit = 100,
+        CancellationToken ct = default)
     {
-        var result = await _ticketQueueService.GetPatientsAsync(texto, cancellationToken);
-        return ToActionResult(result);
+        var items = await service.ListarPacientesAsync(texto, Math.Clamp(limit, 1, 500), ct);
+        return Ok(ApiResponse<List<PacienteItemDto>>.Success(items));
     }
 
     [HttpGet("citas-confirmadas")]
@@ -56,23 +50,23 @@ public sealed class RecepcionCatalogosController : BaseController
         [FromQuery] int? sedeId,
         [FromQuery] int? servicioId,
         [FromQuery] string? texto,
-        CancellationToken cancellationToken)
+        CancellationToken ct)
     {
-        var result = await _ticketQueueService.GetConfirmedAppointmentsAsync(sedeId, servicioId, texto, cancellationToken);
-        return ToActionResult(result);
+        var items = await service.ListarCitasConfirmadasAsync(sedeId, servicioId, texto, ct);
+        return Ok(ApiResponse<List<CitaItemDto>>.Success(items));
     }
 
     [HttpGet("prioridades-ticket")]
-    public async Task<IActionResult> PrioridadesTicket(CancellationToken cancellationToken)
+    public async Task<IActionResult> PrioridadesTicket(CancellationToken ct)
     {
-        var result = await _ticketQueueService.GetTicketPrioritiesAsync(cancellationToken);
-        return ToActionResult(result);
+        var items = await service.ListarPrioridadesTicketAsync(ct);
+        return Ok(ApiResponse<List<CatalogoItemDto>>.Success(items));
     }
 
     [HttpGet("estados-ticket")]
-    public async Task<IActionResult> EstadosTicket(CancellationToken cancellationToken)
+    public async Task<IActionResult> EstadosTicket(CancellationToken ct)
     {
-        var result = await _ticketQueueService.GetTicketStatesAsync(cancellationToken);
-        return ToActionResult(result);
+        var items = await service.ListarEstadosTicketAsync(ct);
+        return Ok(ApiResponse<List<CatalogoItemDto>>.Success(items));
     }
 }

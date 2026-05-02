@@ -1,13 +1,13 @@
+using System.Text;
 using System.Text.Json.Serialization;
 using Clinica.API.Configuration;
 using Clinica.API.Middlewares;
 using Clinica.Infrastructure;
 using Clinica.Infrastructure.Database;
 using Clinica.Infrastructure.Options;
-using Microsoft.OpenApi.Models;
-using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -59,15 +59,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title       = "Clinica API",
         Version     = "v1",
-        Description = "API .NET 8 para ClinicaDB con enfoque BD-first y modulo 3 de Recepcion/Tickets/Pantalla publica"
-    });
-
-    options.AddSecurityDefinition("Idempotency-Key", new OpenApiSecurityScheme
-    {
-        Name        = "Idempotency-Key",
-        Type        = SecuritySchemeType.ApiKey,
-        In          = ParameterLocation.Header,
-        Description = "GUID opcional para evitar duplicados en operaciones criticas."
+        Description = "API .NET 8 para ClinicaDB con enfoque BD-first"
     });
 
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -116,7 +108,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod()
+              .WithExposedHeaders("Idempotency-Key");
     });
 });
 

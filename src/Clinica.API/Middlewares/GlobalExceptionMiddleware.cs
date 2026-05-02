@@ -3,26 +3,22 @@ using Clinica.Application.Exceptions;
 
 namespace Clinica.API.Middlewares;
 
-// -----------------------------------------------------------------------------
-// Atrapa todas las excepciones no controladas y las convierte en JSON uniforme.
-// Nunca debe llegar un error tecnico crudo al frontend.
-// -----------------------------------------------------------------------------
-public sealed class GlobalExceptionMiddleware
+/// <summary>
+/// Captura todas las excepciones no controladas y las traduce a respuestas
+/// HTTP con el formato ApiResponse estándar. Nunca expone stack traces en producción.
+/// </summary>
+public sealed class GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
 {
-    private readonly RequestDelegate _next;
-    private readonly ILogger<GlobalExceptionMiddleware> _logger;
-
-    public GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
+    private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        _next = next;
-        _logger = logger;
-    }
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
 
     public async Task InvokeAsync(HttpContext context)
     {
         try
         {
-            await _next(context);
+            await next(context);
         }
         catch (Exception ex)
         {
@@ -30,35 +26,39 @@ public sealed class GlobalExceptionMiddleware
         }
     }
 
-    private async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private async Task HandleExceptionAsync(HttpContext context, Exception ex)
     {
-        var (statusCode, codigo, mensaje) = exception switch
+        var (status, code, message) = ex switch
         {
-            BusinessException bex  => (422, bex.Codigo, bex.Message),
-            ConflictException cex  => (409, cex.Codigo, cex.Message),
-            NotFoundException nex  => (404, "NOT_FOUND", nex.Message),
-            UnauthorizedAccessException => (401, "NO_AUTORIZADO", "No autorizado."),
-            _ => (500, "ERROR_INTERNO", "Ocurrio un error interno.")
+            BusinessException be   => (422, be.Code ?? "REGLA_NEGOCIO",       be.Message),
+            ConflictException  ce  => (409, ce.Code ?? "CONFLICTO",           ce.Message),
+            NotFoundException  _   => (404, "NO_ENCONTRADO",                  ex.Message),
+            ArgumentException  _   => (400, "PARAMETRO_INVALIDO",             ex.Message),
+            _                      => (500, "ERROR_INTERNO",                  "Ocurrió un error interno.")
         };
 
-        if (statusCode == 500)
-            _logger.LogError(exception, "Error no controlado");
+        if (status == 500)
+            logger.LogError(ex, "Error no controlado: {Message}", ex.Message);
+        else
+            logger.LogWarning("Error controlado [{Code}]: {Message}", code, ex.Message);
 
-        context.Response.StatusCode = statusCode;
+        context.Response.StatusCode  = status;
         context.Response.ContentType = "application/json";
 
         var body = JsonSerializer.Serialize(new
         {
-            success = false,
-            errorCode = codigo,
-            message = mensaje,
-            meta = new
-            {
-                requestId = context.TraceIdentifier,
-                timestamp = DateTime.UtcNow
-            }
-        });
+            ok      = false,
+            code,
+            message,
+            data    = (object?)null,
+        }, JsonOptions);
 
         await context.Response.WriteAsync(body);
     }
+}
+
+public static class GlobalExceptionMiddlewareExtensions
+{
+    public static IApplicationBuilder UseGlobalExceptionHandler(this IApplicationBuilder app) =>
+        app.UseMiddleware<GlobalExceptionMiddleware>();
 }
