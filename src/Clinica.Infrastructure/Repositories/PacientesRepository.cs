@@ -106,4 +106,30 @@ public sealed class PacientesRepository
                 new SqlParameter("@AlergiaId",  alergiaId)
             ]);
     }
+    public async Task<PacienteResponseDto?> ObtenerPorUsuarioAsync(int usuarioId)
+    {
+        return await _executor.QuerySingleAsync(
+            "dbo.sp_Paciente_ObtenerPorUsuario",
+            [new SqlParameter("@UsuarioId", usuarioId)],
+            reader => new PacienteResponseDto
+            {
+                PacienteId                   = reader.GetInt32OrDefault("PacienteId"),
+                NumeroExpediente             = reader.GetNullableString("NumeroExpediente") ?? string.Empty,
+                TipoDocumento                = reader.GetNullableString("TipoDocumento") ?? string.Empty,
+                NumeroDocumento              = reader.GetNullableString("NumeroDocumento") ?? string.Empty,
+                FechaNacimiento              = reader.GetDateTimeOrDefault("FechaNacimiento"),
+                Genero                       = reader.GetNullableString("Genero") ?? string.Empty,
+                Ocupacion                    = reader.GetNullableString("Ocupacion"),
+                Nacionalidad                 = reader.GetNullableString("Nacionalidad") ?? string.Empty,
+                DireccionResidencia          = reader.GetNullableString("DireccionResidencia"),
+                TipoSangre                   = reader.GetNullableString("TipoSangre"),
+                NotasMedicas                 = reader.GetNullableString("NotasMedicas"),
+                EsDiscapacitado              = reader.GetBooleanOrDefault("EsDiscapacitado"),
+                ContactoEmergenciaNombre     = reader.GetNullableString("ContactoEmergenciaNombre"),
+                ContactoEmergenciaTelefono   = reader.GetNullableString("ContactoEmergenciaTelefono"),
+                ContactoEmergenciaRelacion   = reader.GetNullableString("ContactoEmergenciaRelacion"),
+                Estado                       = reader.GetNullableString("Estado") ?? string.Empty,
+                FechaRegistro                = reader.GetDateTimeOrDefault("FechaRegistro")
+            });
+    }
 }

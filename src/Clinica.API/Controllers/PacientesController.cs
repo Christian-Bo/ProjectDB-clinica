@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using Clinica.Application.Contracts;
 using Clinica.Application.DTOs.Pacientes;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Clinica.API.Controllers;
@@ -13,6 +15,22 @@ public sealed class PacientesController : ControllerBase
     public PacientesController(IPacientesService service)
     {
         _service = service;
+    }
+
+    // GET /api/pacientes/yo
+    [HttpGet("yo")]
+    [Authorize]
+    public async Task<IActionResult> Yo()
+    {
+        var claim = User.Claims.FirstOrDefault(c => c.Type == "usuarioId")?.Value;
+        if (!int.TryParse(claim, out var usuarioId))
+            return Unauthorized(new { success = false, message = "Token invalido." });
+
+        var paciente = await _service.ObtenerPorUsuarioAsync(usuarioId);
+        if (paciente is null)
+            return NotFound(new { success = false, message = "Paciente no encontrado." });
+
+        return Ok(new { success = true, data = paciente });
     }
 
     // GET /api/pacientes/{id}

@@ -52,4 +52,8 @@ public sealed class PacientesService : IPacientesService
         if (!result.Success)
             throw new BusinessException(result.Codigo, result.Mensaje);
     }
+    public async Task<PacienteResponseDto?> ObtenerPorUsuarioAsync(int usuarioId)
+    {
+        return await _repo.ObtenerPorUsuarioAsync(usuarioId);
+    }
 }
