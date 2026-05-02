@@ -37,13 +37,7 @@ public sealed class AuthService : IAuthService
 
         if (usuario.Estado != "ACTIVO")
             return (false, "CUENTA_INACTIVA", "La cuenta no esta activa.", null);
-
-        Console.WriteLine($"=== DEBUG LOGIN ===");
-        Console.WriteLine($"Password: [{request.Password}]");
-        Console.WriteLine($"Hash: [{usuario.PasswordHash}]");
         var verificacion = _hasher.Verify(request.Password, usuario.PasswordHash);
-        Console.WriteLine($"Verificacion: {verificacion}");
-        Console.WriteLine($"==================");
 
         if (!verificacion)
         {
@@ -103,5 +97,24 @@ public sealed class AuthService : IAuthService
             RequiereCambio = usuario.RequiereCambioPassword,
             Roles          = roles
         });
+    }
+
+    public async Task<(bool Success, string? ErrorCode, string Message, object? Data)>
+        RegistrarPacienteAsync(RegistroRequestDto dto)
+    {
+        var passwordHash = _hasher.Hash(dto.Password);
+        var salt = Guid.NewGuid().ToString();
+
+        var result = await _repo.RegistrarPacienteAsync(
+            dto.Nombres, dto.Apellidos, dto.CorreoElectronico,
+            passwordHash, salt, dto.Telefono,
+            dto.TipoDocumento, dto.NumeroDocumento,
+            dto.FechaNacimiento, dto.Genero,
+            dto.Nacionalidad, dto.TipoSangre);
+
+        if (!result.Success)
+            return (false, result.ErrorCode, result.Message, null);
+
+        return (true, null, result.Message, new { result.UsuarioId, result.PacienteId });
     }
 }

@@ -54,4 +54,25 @@ public sealed class AuthController : ControllerBase
         var hasher = new Clinica.Infrastructure.Security.PasswordHasher();
         return Ok(new { hash = hasher.Hash(password) });
     }
+
+
+
+    // registro-pacientes
+    [HttpPost("registro")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Registro([FromBody] RegistroRequestDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(new { success = false, message = "Datos invalidos." });
+
+        var (success, errorCode, message, data) = await _authService.RegistrarPacienteAsync(dto);
+
+        if (!success)
+        {
+            var statusCode = errorCode is "CORREO_DUPLICADO" or "DOCUMENTO_DUPLICADO" ? 409 : 422;
+            return StatusCode(statusCode, new { success = false, errorCode, message });
+        }
+
+        return StatusCode(201, new { success = true, message, data });
+    }
 }
