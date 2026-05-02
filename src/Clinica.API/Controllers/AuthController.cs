@@ -22,14 +22,14 @@ public sealed class AuthController : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginRequestDto dto)
     {
         if (!ModelState.IsValid)
-            return BadRequest(new { ok = false, message = "Datos invalidos." });
+            return BadRequest(new { success = false, message = "Datos invalidos." });
 
         var (success, errorCode, message, data) = await _authService.LoginAsync(dto);
 
         if (!success)
-            return Unauthorized(new { ok = false, errorCode, message });
+            return Unauthorized(new { success = false, errorCode, message });
 
-        return Ok(new { ok = true, message, data });
+        return Ok(new { success = true, message, data });
     }
 
     [HttpGet("me")]
@@ -38,13 +38,13 @@ public sealed class AuthController : ControllerBase
     {
         var claim = User.FindFirstValue("usuarioId");
         if (!int.TryParse(claim, out var usuarioId))
-            return Unauthorized(new { ok = false, message = "Token invalido." });
+            return Unauthorized(new { success = false, message = "Token invalido." });
 
         var (success, data) = await _authService.GetMeAsync(usuarioId);
         if (!success)
-            return NotFound(new { ok = false, message = "Usuario no encontrado." });
+            return NotFound(new { success = false, message = "Usuario no encontrado." });
 
-        return Ok(new { ok = true, data });
+        return Ok(new { success = true, data });
     }
 
     // Dev1 — Registro de usuarios administrativos
@@ -53,14 +53,14 @@ public sealed class AuthController : ControllerBase
     public async Task<IActionResult> Registro([FromBody] RegistroUsuarioRequestDto dto)
     {
         if (!ModelState.IsValid)
-            return BadRequest(new { ok = false, message = "Datos invalidos." });
+            return BadRequest(new { success = false, message = "Datos invalidos." });
 
         var (success, errorCode, message, data) = await _authService.RegistrarUsuarioAsync(dto);
 
         if (!success)
-            return BadRequest(new { ok = false, errorCode, message });
+            return BadRequest(new { success = false, errorCode, message });
 
-        return StatusCode(201, new { ok = true, message, data });
+        return StatusCode(201, new { success = true, message, data });
     }
 
     // Dev2 — Registro de pacientes

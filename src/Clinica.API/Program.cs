@@ -9,16 +9,8 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
-// -----------------------------------------------------------------------------
-// 1) Carga de configuracion robusta.
-//    - appsettings.json
-//    - appsettings.{Environment}.json
-//    - .env y .env.local (desarrollo local)
-//    - variables de entorno reales (Railway, Windows, Linux)
-// -----------------------------------------------------------------------------
 EnvironmentBootstrapper.LoadFromDotEnv(builder.Environment.ContentRootPath);
 
 builder.Configuration
@@ -34,23 +26,25 @@ builder.Services.Configure<TicketQueueWorkerOptions>(
 
 builder.Services.AddInfrastructure();
 
-//builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-//    .AddJwtBearer(options =>
-//    {
-//        options.TokenValidationParameters = new TokenValidationParameters
-//        {
-//            ValidateIssuer           = true,
-//            ValidateAudience         = true,
-//            ValidateLifetime         = true,
-//            ValidateIssuerSigningKey = true,
-//            ValidIssuer              = builder.Configuration["Jwt:Issuer"],
-//            ValidAudience            = builder.Configuration["Jwt:Audience"],
-//            IssuerSigningKey         = new SymmetricSecurityKey(
-//                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
-//        };
-//    });
+// JWT — Dev1
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer           = true,
+            ValidateAudience         = true,
+            ValidateLifetime         = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer              = builder.Configuration["Jwt:Issuer"],
+            ValidAudience            = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey         = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+        };
+    });
 
 builder.Services.AddAuthorization();
+
 builder.Services
     .AddControllers()
     .AddJsonOptions(options =>
@@ -63,25 +57,45 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "Clinica API",
-        Version = "v1",
+        Title       = "Clinica API",
+        Version     = "v1",
         Description = "API .NET 8 para ClinicaDB con enfoque BD-first y modulo 3 de Recepcion/Tickets/Pantalla publica"
     });
 
     options.AddSecurityDefinition("Idempotency-Key", new OpenApiSecurityScheme
     {
-        Name = "Idempotency-Key",
-        Type = SecuritySchemeType.ApiKey,
-        In = ParameterLocation.Header,
-        Description = "GUID opcional para evitar duplicados en operaciones criticas como generar ticket y llamar siguiente."
+        Name        = "Idempotency-Key",
+        Type        = SecuritySchemeType.ApiKey,
+        In          = ParameterLocation.Header,
+        Description = "GUID opcional para evitar duplicados en operaciones criticas."
+    });
+
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name         = "Authorization",
+        Type         = SecuritySchemeType.Http,
+        Scheme       = "bearer",
+        BearerFormat = "JWT",
+        In           = ParameterLocation.Header,
+        Description  = "Ingresa el token JWT"
+    });
+
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id   = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
     });
 });
 
-// -----------------------------------------------------------------------------
-// 2) CORS flexible.
-//    Primero intenta leer el arreglo tradicional Cors:AllowedOrigins.
-//    Si no existe, usa una variable CSV llamada CORS_ALLOWED_ORIGINS.
-// -----------------------------------------------------------------------------
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
     .Get<string[]>();
@@ -108,21 +122,17 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// -----------------------------------------------------------------------------
-// 3) Mensaje diagnostico de arranque.
-//    Esto ayuda a detectar inmediatamente si la ConnectionString se cargo o no.
-// -----------------------------------------------------------------------------
 var connectionStringLoaded = DatabaseConnection.TryResolveConnectionString(builder.Configuration, out _);
 Console.WriteLine(connectionStringLoaded
     ? ">> ConnectionString 'DefaultConnection' detectada correctamente."
-    : ">> ADVERTENCIA: No se detecto 'DefaultConnection'. Revisa appsettings, .env o variables de entorno.");
+    : ">> ADVERTENCIA: No se detecto 'DefaultConnection'.");
 
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
 app.UseCors("ClinicaPolicy");
-//app.UseAuthentication();    
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
