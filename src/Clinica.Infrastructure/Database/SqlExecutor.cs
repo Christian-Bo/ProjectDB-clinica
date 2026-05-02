@@ -83,22 +83,39 @@ public sealed class SqlExecutor
         await using var command = CreateCommand(connection, storedProcedure, parameters);
         await using var reader = await command.ExecuteReaderAsync(ct);
 
-        if (!await reader.ReadAsync(ct))
+        do
         {
-            return new SpResult
+            if (!await reader.ReadAsync(ct)) continue;
+
+            // Verificar si este resultset tiene columna HttpStatus
+            bool tieneHttpStatus = false;
+            for (int i = 0; i < reader.FieldCount; i++)
             {
-                HttpStatus = 200,
-                Codigo = "OK",
-                Mensaje = "Operacion ejecutada correctamente."
-            };
+                if (reader.GetName(i).Equals("HttpStatus", StringComparison.OrdinalIgnoreCase))
+                {
+                    tieneHttpStatus = true;
+                    break;
+                }
+            }
+
+            if (tieneHttpStatus)
+            {
+                return new SpResult
+                {
+                    HttpStatus = reader.GetInt32OrDefault("HttpStatus", 200),
+                    Codigo     = reader.GetNullableString("Codigo") ?? reader.GetNullableString("Code") ?? "OK",
+                    Mensaje    = reader.GetNullableString("Mensaje") ?? reader.GetNullableString("Message") ?? "Operacion ejecutada correctamente.",
+                    EntityId   = ReadEntityId(reader)
+                };
+            }
         }
+        while (await reader.NextResultAsync(ct));
 
         return new SpResult
         {
-            HttpStatus = reader.GetInt32OrDefault("HttpStatus", 200),
-            Codigo = reader.GetNullableString("Codigo") ?? reader.GetNullableString("Code") ?? "OK",
-            Mensaje = reader.GetNullableString("Mensaje") ?? reader.GetNullableString("Message") ?? "Operacion ejecutada correctamente.",
-            EntityId = ReadEntityId(reader)
+            HttpStatus = 200,
+            Codigo     = "OK",
+            Mensaje    = "Operacion ejecutada correctamente."
         };
     }
 
