@@ -9,4 +9,6 @@ public interface IAuthService
 
     Task<(bool Success, UserProfileDto? Data)>
         GetMeAsync(int usuarioId);
+
+        Task<(bool Success, string? ErrorCode, string Message, object? Data)> RegistrarPacienteAsync(RegistroRequestDto dto);
 }

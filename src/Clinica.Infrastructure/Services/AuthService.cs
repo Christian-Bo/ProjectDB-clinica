@@ -104,4 +104,23 @@ public sealed class AuthService : IAuthService
             Roles          = roles
         });
     }
+
+    public async Task<(bool Success, string? ErrorCode, string Message, object? Data)>
+        RegistrarPacienteAsync(RegistroRequestDto dto)
+    {
+        var passwordHash = _hasher.Hash(dto.Password);
+        var salt = Guid.NewGuid().ToString();
+
+        var result = await _repo.RegistrarPacienteAsync(
+            dto.Nombres, dto.Apellidos, dto.CorreoElectronico,
+            passwordHash, salt, dto.Telefono,
+            dto.TipoDocumento, dto.NumeroDocumento,
+            dto.FechaNacimiento, dto.Genero,
+            dto.Nacionalidad, dto.TipoSangre);
+
+        if (!result.Success)
+            return (false, result.ErrorCode, result.Message, null);
+
+        return (true, null, result.Message, new { result.UsuarioId, result.PacienteId });
+    }
 }
