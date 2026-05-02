@@ -57,9 +57,7 @@ internal static class SqlDataReaderExtensions
     public static long GetInt64OrDefault(this SqlDataReader reader, string columnName, long defaultValue = 0)
     {
         if (!reader.HasColumn(columnName))
-        {
             return defaultValue;
-        }
 
         var ordinal = reader.GetOrdinal(columnName);
         return reader.IsDBNull(ordinal) ? defaultValue : Convert.ToInt64(reader.GetValue(ordinal));

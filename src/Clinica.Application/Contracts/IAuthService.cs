@@ -1,7 +1,14 @@
+using Clinica.Application.DTOs.Auth;
+
 namespace Clinica.Application.Contracts;
 
-// Contrato base del servicio de autenticacion.
-// Se deja como stub para completar despues con login real, JWT y SPs de seguridad.
 public interface IAuthService
 {
+    Task<(bool Success, string? ErrorCode, string Message, LoginResponseDto? Data)>
+        LoginAsync(LoginRequestDto request);
+
+    Task<(bool Success, UserProfileDto? Data)>
+        GetMeAsync(int usuarioId);
+
+        Task<(bool Success, string? ErrorCode, string Message, object? Data)> RegistrarPacienteAsync(RegistroRequestDto dto);
 }
