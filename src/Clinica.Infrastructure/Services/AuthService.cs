@@ -37,13 +37,7 @@ public sealed class AuthService : IAuthService
 
         if (usuario.Estado != "ACTIVO")
             return (false, "CUENTA_INACTIVA", "La cuenta no esta activa.", null);
-
-        Console.WriteLine($"=== DEBUG LOGIN ===");
-        Console.WriteLine($"Password: [{request.Password}]");
-        Console.WriteLine($"Hash: [{usuario.PasswordHash}]");
         var verificacion = _hasher.Verify(request.Password, usuario.PasswordHash);
-        Console.WriteLine($"Verificacion: {verificacion}");
-        Console.WriteLine($"==================");
 
         if (!verificacion)
         {

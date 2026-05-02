@@ -22,9 +22,12 @@ public sealed class AuthRepository
         await using var cmd = conn.CreateCommand();
         cmd.CommandType = CommandType.StoredProcedure;
         cmd.CommandText = "dbo.sp_Usuario_Obtener";
-        cmd.Parameters.AddWithValue("@UsuarioId",          DBNull.Value);
-        cmd.Parameters.AddWithValue("@NombreUsuario",      username);
-        cmd.Parameters.AddWithValue("@CorreoElectronico",  DBNull.Value);
+
+        // Si contiene @ es correo, si no es username
+        var esCorreo = username.Contains('@');
+        cmd.Parameters.AddWithValue("@UsuarioId", DBNull.Value);
+        cmd.Parameters.AddWithValue("@NombreUsuario", esCorreo ? DBNull.Value : (object)username);
+        cmd.Parameters.AddWithValue("@CorreoElectronico", esCorreo ? (object)username : DBNull.Value);
 
         await using var reader = await cmd.ExecuteReaderAsync();
         if (!await reader.ReadAsync()) return null;
@@ -40,10 +43,9 @@ public sealed class AuthRepository
             Estado                 = reader.GetString("Estado"),
             RequiereCambioPassword = reader.GetBoolean("RequiereCambioPassword"),
             RolesActivos           = reader.IsDBNull("RolesActivos")
-                                     ? null : reader.GetString("RolesActivos")
+                                    ? null : reader.GetString("RolesActivos")
         };
     }
-
     public async Task RegistrarSesionAsync(int usuarioId, string token, int minutesExpiry)
     {
         await using var conn = _db.CreateConnection();
