@@ -69,4 +69,20 @@ public sealed class RecepcionCatalogosController(ICatalogosRecepcionService serv
         var items = await service.ListarEstadosTicketAsync(ct);
         return Ok(ApiResponse<List<CatalogoItemDto>>.Success(items));
     }
+
+    [HttpGet("kiosco/ventanillas")]
+    public async Task<IActionResult> KioscoVentanillas([FromQuery] int sedeId, CancellationToken ct)
+    {
+        var items = await service.ListarKioscoVentanillasAsync(sedeId, ct);
+        return Ok(ApiResponse<List<KioscoVentanillaDto>>.Success(items));
+    }
+
+    [HttpPost("kiosco/ventanillas")]
+    public async Task<IActionResult> ConfigurarKioscoVentanilla(
+        [FromBody] KioscoVentanillaConfigRequest request,
+        CancellationToken ct)
+    {
+        var item = await service.ConfigurarKioscoVentanillaAsync(request, ct);
+        return Ok(ApiResponse<KioscoVentanillaDto>.Success(item, "Ventanilla configurada."));
+    }
 }

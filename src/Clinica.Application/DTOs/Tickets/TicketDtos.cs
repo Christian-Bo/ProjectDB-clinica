@@ -25,6 +25,29 @@ public sealed record GenerarTicketEspecialRequest
     public int?   UsuarioId      { get; init; }
 }
 
+public sealed record GenerarTicketKioscoRequest
+{
+    public long?  PacienteId             { get; init; }
+    public string? DocumentoPaciente     { get; init; }
+    public bool   UsarPacienteNoAplica   { get; init; }
+    public int    SedeId                 { get; init; }
+    public int    ServicioId             { get; init; }
+    public string PrioridadSolicitada    { get; init; } = "NORMAL";
+    public string? MotivoEspecial        { get; init; }
+    public int?   UsuarioId              { get; init; }
+}
+
+public sealed record CancelarTicketRequest
+{
+    public string? Motivo    { get; init; }
+    public int?   UsuarioId { get; init; }
+}
+
+public sealed record RellamarTicketRequest
+{
+    public int? UsuarioId { get; init; }
+}
+
 public sealed record LlamarSiguienteRequest
 {
     public int  SedeId      { get; init; }
@@ -59,6 +82,8 @@ public sealed record TicketDto
     public int     ServicioId            { get; init; }
     public string  ServicioNombre        { get; init; } = string.Empty;
     public string? EspecialidadNombre    { get; init; }
+    public int?    VentanillaNumero      { get; init; }
+    public string? VentanillaNombre      { get; init; }
     public int?    MedicoId              { get; init; }
     public string? MedicoNombre          { get; init; }
     public int?    ConsultorioId         { get; init; }

@@ -17,6 +17,10 @@ public sealed class TicketsService(TicketsRepository repo) : ITicketsService
         repo.GenerarTicketEspecialAsync(r.CitaId, r.PacienteId, r.SedeId, r.ServicioId,
             r.MedicoId, r.MotivoEspecial, r.UsuarioId, key, ct);
 
+    public Task<TicketDto> GenerarTicketKioscoAsync(GenerarTicketKioscoRequest r, Guid? key, CancellationToken ct) =>
+        repo.GenerarTicketKioscoAsync(r.PacienteId, r.DocumentoPaciente, r.UsarPacienteNoAplica,
+            r.SedeId, r.ServicioId, r.PrioridadSolicitada, r.MotivoEspecial, r.UsuarioId, key, ct);
+
     public Task<TicketDto> LlamarSiguienteAsync(LlamarSiguienteRequest r, CancellationToken ct) =>
         repo.LlamarSiguienteAsync(r.SedeId, r.ServicioId, r.EstacionId, r.UsuarioId, ct);
 
@@ -25,6 +29,12 @@ public sealed class TicketsService(TicketsRepository repo) : ITicketsService
 
     public Task<TicketDto> FinalizarTicketAsync(long ticketId, string? motivo, CancellationToken ct) =>
         repo.FinalizarTicketAsync(ticketId, motivo, ct);
+
+    public Task<TicketDto> CancelarTicketAsync(long ticketId, string? motivo, int? usuarioId, CancellationToken ct) =>
+        repo.CancelarTicketAsync(ticketId, motivo, usuarioId, ct);
+
+    public Task<TicketDto> RellamarTicketAsync(long ticketId, int? usuarioId, CancellationToken ct) =>
+        repo.RellamarTicketAsync(ticketId, usuarioId, ct);
 
     public Task<NoShowResultDto> ProcesarNoShowAsync(CancellationToken ct) =>
         repo.ProcesarNoShowAsync(ct);
@@ -58,6 +68,9 @@ public sealed class PantallaService(PantallaRepository repo) : IPantallaService
 {
     public Task<PantallaColaDto> ObtenerColaAsync(int sedeId, int servicioId, CancellationToken ct) =>
         repo.ObtenerColaAsync(sedeId, servicioId, ct);
+
+    public Task<PantallaColaDto> ObtenerColaAsync(int sedeId, IReadOnlyCollection<int> servicioIds, CancellationToken ct) =>
+        repo.ObtenerColaAsync(sedeId, servicioIds, ct);
 }
 
 /// <summary>Servicio de Catálogos para Recepción.</summary>
@@ -70,4 +83,6 @@ public sealed class CatalogosRecepcionService(CatalogosRepository repo) : ICatal
     public Task<List<CitaItemDto>>     ListarCitasConfirmadasAsync(int? sedeId, int? servicioId, string? texto, CancellationToken ct) => repo.ListarCitasConfirmadasAsync(sedeId, servicioId, texto, ct);
     public Task<List<CatalogoItemDto>> ListarPrioridadesTicketAsync(CancellationToken ct)                                         => repo.ListarPrioridadesAsync(ct);
     public Task<List<CatalogoItemDto>> ListarEstadosTicketAsync(CancellationToken ct)                                             => repo.ListarEstadosAsync(ct);
+    public Task<List<KioscoVentanillaDto>> ListarKioscoVentanillasAsync(int sedeId, CancellationToken ct)                         => repo.ListarKioscoVentanillasAsync(sedeId, ct);
+    public Task<KioscoVentanillaDto> ConfigurarKioscoVentanillaAsync(KioscoVentanillaConfigRequest request, CancellationToken ct)  => repo.ConfigurarKioscoVentanillaAsync(request, ct);
 }

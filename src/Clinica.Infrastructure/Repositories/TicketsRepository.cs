@@ -59,6 +59,30 @@ public sealed class TicketsRepository(SqlExecutor db)
         return MapTicketFromDataSet(ds, "dbo.sp_GenerarTicketEspecial");
     }
 
+    // ─── Generar ticket desde kiosco ───────────────────────────────────────────
+
+    public async Task<TicketDto> GenerarTicketKioscoAsync(
+        long? pacienteId, string? documentoPaciente, bool usarPacienteNoAplica,
+        int sedeId, int servicioId, string prioridad, string? motivo,
+        int? usuarioId, Guid? idempotencyKey, CancellationToken ct)
+    {
+        var parameters = new[]
+        {
+            Sql.BigInt  ("@PacienteId",             pacienteId),
+            Sql.NVarChar("@DocumentoPaciente",      documentoPaciente, 30),
+            Sql.Bit     ("@UsarPacienteNoAplica",  usarPacienteNoAplica),
+            Sql.Int     ("@SedeId",                 sedeId),
+            Sql.Int     ("@ServicioId",             servicioId),
+            Sql.NVarChar("@PrioridadSolicitada",    prioridad, 30),
+            Sql.NVarChar("@MotivoEspecial",         motivo, 500),
+            Sql.Int     ("@UsuarioId",              usuarioId),
+            Sql.UniqueId("@IdempotencyKey",         idempotencyKey),
+        };
+
+        var ds = await db.ExecuteSpAsync("dbo.sp_GenerarTicketKiosco", parameters, ct);
+        return MapTicketFromDataSet(ds, "dbo.sp_GenerarTicketKiosco");
+    }
+
     // ─── Llamar siguiente ────────────────────────────────────────────────────
 
     public async Task<TicketDto> LlamarSiguienteAsync(
@@ -97,6 +121,35 @@ public sealed class TicketsRepository(SqlExecutor db)
 
         var ds = await db.ExecuteSpAsync("dbo.sp_FinalizarTicket", parameters, ct);
         return MapTicketFromDataSet(ds, "dbo.sp_FinalizarTicket");
+    }
+
+    // ─── Cancelar ticket ──────────────────────────────────────────────────────
+
+    public async Task<TicketDto> CancelarTicketAsync(long ticketId, string? motivo, int? usuarioId, CancellationToken ct)
+    {
+        var parameters = new[]
+        {
+            Sql.BigInt  ("@TicketId",  ticketId),
+            Sql.NVarChar("@Motivo",    motivo, 500),
+            Sql.Int     ("@UsuarioId", usuarioId),
+        };
+
+        var ds = await db.ExecuteSpAsync("dbo.sp_Ticket_Cancelar", parameters, ct);
+        return MapTicketFromDataSet(ds, "dbo.sp_Ticket_Cancelar");
+    }
+
+    // ─── Volver a llamar ticket ──────────────────────────────────────────────
+
+    public async Task<TicketDto> RellamarTicketAsync(long ticketId, int? usuarioId, CancellationToken ct)
+    {
+        var parameters = new[]
+        {
+            Sql.BigInt("@TicketId",  ticketId),
+            Sql.Int   ("@UsuarioId", usuarioId),
+        };
+
+        var ds = await db.ExecuteSpAsync("dbo.sp_Ticket_Rellamar", parameters, ct);
+        return MapTicketFromDataSet(ds, "dbo.sp_Ticket_Rellamar");
     }
 
     // ─── Procesar no-show ────────────────────────────────────────────────────
@@ -273,7 +326,9 @@ public sealed class TicketsRepository(SqlExecutor db)
         SedeNombre            = row.Str("SedeNombre"),
         ServicioId            = row.Int32("ServicioId"),
         ServicioNombre        = row.Str("ServicioNombre"),
-        EspecialidadNombre    = row.StrNull("EspecialidadNombre"),
+        EspecialidadNombre    = row.Table.HasColumn("EspecialidadNombre") ? row.StrNull("EspecialidadNombre") : null,
+        VentanillaNumero      = row.Table.HasColumn("VentanillaNumero") ? row.Int32Null("VentanillaNumero") : null,
+        VentanillaNombre      = row.Table.HasColumn("VentanillaNombre") ? row.StrNull("VentanillaNombre") : null,
         MedicoId              = row.Int32Null("MedicoId"),
         MedicoNombre          = row.StrNull("MedicoNombre"),
         ConsultorioId         = row.Int32Null("ConsultorioId"),

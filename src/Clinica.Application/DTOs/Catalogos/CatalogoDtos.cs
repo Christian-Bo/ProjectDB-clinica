@@ -33,3 +33,26 @@ public sealed record CitaItemDto
     public string SedeNombre    { get; init; } = string.Empty;
     public string? MedicoNombre { get; init; }
 }
+
+public sealed record KioscoVentanillaDto
+{
+    public int KioscoVentanillaId { get; init; }
+    public int SedeId             { get; init; }
+    public string SedeNombre      { get; init; } = string.Empty;
+    public int ServicioId         { get; init; }
+    public string ServicioNombre  { get; init; } = string.Empty;
+    public int? EspecialidadId    { get; init; }
+    public string? EspecialidadNombre { get; init; }
+    public int NumeroVentanilla   { get; init; }
+    public string VentanillaNombre { get; init; } = string.Empty;
+    public bool Activo            { get; init; }
+}
+
+public sealed record KioscoVentanillaConfigRequest
+{
+    public int SedeId           { get; init; }
+    public int ServicioId       { get; init; }
+    public int NumeroVentanilla { get; init; }
+    public bool Activo          { get; init; } = true;
+    public int? UsuarioId       { get; init; }
+}

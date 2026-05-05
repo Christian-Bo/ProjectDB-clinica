@@ -26,13 +26,16 @@ public sealed class PantallaController(IPantallaService service) : ControllerBas
     [HttpGet("cola")]
     public async Task<IActionResult> ObtenerCola(
         [FromQuery] int sedeId,
-        [FromQuery] int servicioId,
+        [FromQuery] int? servicioId,
+        [FromQuery] string? servicioIds,
         CancellationToken ct)
     {
-        if (sedeId <= 0 || servicioId <= 0)
-            return BadRequest(ApiResponse<object>.Fail("sedeId y servicioId son requeridos.", "PARAM_INVALIDO"));
+        var ids = ResolverServicioIds(servicioId, servicioIds);
 
-        var cola = await service.ObtenerColaAsync(sedeId, servicioId, ct);
+        if (sedeId <= 0 || ids.Count == 0)
+            return BadRequest(ApiResponse<object>.Fail("sedeId y al menos un servicio son requeridos.", "PARAM_INVALIDO"));
+
+        var cola = await service.ObtenerColaAsync(sedeId, ids, ct);
         return Ok(ApiResponse<PantallaColaDto>.Success(cola));
     }
 
@@ -42,11 +45,14 @@ public sealed class PantallaController(IPantallaService service) : ControllerBas
     [HttpGet("cola/stream")]
     public async Task StreamCola(
         [FromQuery] int sedeId,
-        [FromQuery] int servicioId,
+        [FromQuery] int? servicioId,
+        [FromQuery] string? servicioIds,
         [FromQuery] int intervalSeconds = 4,
         CancellationToken ct = default)
     {
-        if (sedeId <= 0 || servicioId <= 0)
+        var ids = ResolverServicioIds(servicioId, servicioIds);
+
+        if (sedeId <= 0 || ids.Count == 0)
         {
             Response.StatusCode = 400;
             return;
@@ -62,7 +68,7 @@ public sealed class PantallaController(IPantallaService service) : ControllerBas
         {
             while (!ct.IsCancellationRequested)
             {
-                var cola    = await service.ObtenerColaAsync(sedeId, servicioId, ct);
+                var cola = await service.ObtenerColaAsync(sedeId, ids, ct);
                 var payload = JsonSerializer.Serialize(
                     ApiResponse<PantallaColaDto>.Success(cola), JsonOpts);
 
@@ -73,5 +79,24 @@ public sealed class PantallaController(IPantallaService service) : ControllerBas
             }
         }
         catch (OperationCanceledException) { /* cliente desconectado — normal */ }
+    }
+
+    private static List<int> ResolverServicioIds(int? servicioId, string? servicioIds)
+    {
+        var ids = new List<int>();
+
+        if (servicioId is > 0)
+            ids.Add(servicioId.Value);
+
+        if (!string.IsNullOrWhiteSpace(servicioIds))
+        {
+            foreach (var raw in servicioIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (int.TryParse(raw, out var parsed) && parsed > 0)
+                    ids.Add(parsed);
+            }
+        }
+
+        return ids.Distinct().ToList();
     }
 }

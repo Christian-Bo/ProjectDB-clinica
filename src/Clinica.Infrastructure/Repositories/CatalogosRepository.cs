@@ -1,5 +1,6 @@
 using System.Data;
 using Clinica.Application.DTOs.Catalogos;
+using Clinica.Application.Exceptions;
 using Clinica.Infrastructure.Database;
 
 namespace Clinica.Infrastructure.Repositories;
@@ -83,6 +84,56 @@ public sealed class CatalogosRepository(SqlExecutor db)
         })];
     }
 
+    public async Task<List<KioscoVentanillaDto>> ListarKioscoVentanillasAsync(int sedeId, CancellationToken ct)
+    {
+        var parameters = new[] { Sql.Int("@SedeId", sedeId) };
+        var dt = await db.ExecuteSpFirstTableAsync("dbo.sp_KioscoVentanilla_Listar", parameters, ct);
+        return [.. dt.Rows.Cast<DataRow>().Select(MapKioscoVentanilla)];
+    }
+
+    public async Task<KioscoVentanillaDto> ConfigurarKioscoVentanillaAsync(KioscoVentanillaConfigRequest request, CancellationToken ct)
+    {
+        var parameters = new[]
+        {
+            Sql.Int("@SedeId", request.SedeId),
+            Sql.Int("@ServicioId", request.ServicioId),
+            Sql.Int("@NumeroVentanilla", request.NumeroVentanilla),
+            Sql.Bit("@Activo", request.Activo),
+            Sql.Int("@UsuarioId", request.UsuarioId),
+        };
+
+        var ds = await db.ExecuteSpAsync("dbo.sp_KioscoVentanilla_Configurar", parameters, ct);
+        var table = FirstDataTableOrThrow(ds, "dbo.sp_KioscoVentanilla_Configurar");
+        return MapKioscoVentanilla(table.Rows[0]);
+    }
+
+
+    private static DataTable FirstDataTableOrThrow(DataSet ds, string spName)
+    {
+        foreach (DataTable table in ds.Tables)
+        {
+            if (table.HasColumn("SedeId") && table.HasColumn("ServicioId"))
+                return table;
+        }
+
+        if (ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0 && ds.Tables[0].HasColumn("HttpStatus"))
+        {
+            var row = ds.Tables[0].Rows[0];
+            var status = row.Int32("HttpStatus");
+            var code = row.Table.HasColumn("Code") ? row.StrNull("Code") : null;
+            var message = row.Table.HasColumn("Message") ? row.Str("Message") : "La operación no pudo completarse.";
+
+            if (status == 409)
+                throw new ConflictException(message, code);
+            if (status >= 400 && status < 500)
+                throw new BusinessException(message, code);
+            if (status >= 500)
+                throw new InvalidOperationException(message);
+        }
+
+        throw new InvalidOperationException($"{spName} no devolvió datos de ventanilla.");
+    }
+
     // ─── Mappers ─────────────────────────────────────────────────────────────
 
     private static CatalogoItemDto MapCatalogo(DataRow row)
@@ -106,6 +157,20 @@ public sealed class CatalogosRepository(SqlExecutor db)
             Codigo = codigo, Descripcion = desc, Activo = activo,
         };
     }
+
+    private static KioscoVentanillaDto MapKioscoVentanilla(DataRow row) => new()
+    {
+        KioscoVentanillaId = row.Table.HasColumn("KioscoVentanillaId") ? row.Int32("KioscoVentanillaId") : 0,
+        SedeId             = row.Int32("SedeId"),
+        SedeNombre         = row.Table.HasColumn("SedeNombre") ? row.Str("SedeNombre") : string.Empty,
+        ServicioId         = row.Int32("ServicioId"),
+        ServicioNombre     = row.Table.HasColumn("ServicioNombre") ? row.Str("ServicioNombre") : string.Empty,
+        EspecialidadId     = row.Table.HasColumn("EspecialidadId") ? row.Int32Null("EspecialidadId") : null,
+        EspecialidadNombre = row.Table.HasColumn("EspecialidadNombre") ? row.StrNull("EspecialidadNombre") : null,
+        NumeroVentanilla   = row.Int32("NumeroVentanilla"),
+        VentanillaNombre   = row.Table.HasColumn("VentanillaNombre") ? row.Str("VentanillaNombre") : "Ventanilla " + row.Int32("NumeroVentanilla"),
+        Activo             = !row.Table.HasColumn("Activo") || row.Bool("Activo"),
+    };
 
     private static PacienteItemDto MapPaciente(DataRow row) => new()
     {

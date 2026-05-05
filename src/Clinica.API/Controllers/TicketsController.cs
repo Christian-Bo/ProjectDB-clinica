@@ -82,6 +82,18 @@ public sealed class TicketsController(ITicketsService service) : ControllerBase
         return StatusCode(201, ApiResponse<TicketDto>.Success(ticket, "Ticket generado correctamente."));
     }
 
+    // ─── POST /api/tickets/generar-kiosco ───────────────────────────────────
+
+    [HttpPost("generar-kiosco")]
+    public async Task<IActionResult> GenerarKiosco(
+        [FromBody] GenerarTicketKioscoRequest request,
+        [FromHeader(Name = "Idempotency-Key")] Guid? idempotencyKey,
+        CancellationToken ct)
+    {
+        var ticket = await service.GenerarTicketKioscoAsync(request, idempotencyKey, ct);
+        return StatusCode(201, ApiResponse<TicketDto>.Success(ticket, "Ticket generado desde kiosco."));
+    }
+
     // ─── POST /api/tickets/generar-especial ─────────────────────────────────
 
     [HttpPost("generar-especial")]
@@ -105,6 +117,19 @@ public sealed class TicketsController(ITicketsService service) : ControllerBase
         return Ok(ApiResponse<TicketDto>.Success(ticket, "Ticket llamado correctamente."));
     }
 
+
+    // ─── POST /api/tickets/{ticketId}/rellamar ───────────────────────────────
+
+    [HttpPost("{ticketId:long}/rellamar")]
+    public async Task<IActionResult> Rellamar(
+        long ticketId,
+        [FromBody] RellamarTicketRequest request,
+        CancellationToken ct)
+    {
+        var ticket = await service.RellamarTicketAsync(ticketId, request.UsuarioId, ct);
+        return Ok(ApiResponse<TicketDto>.Success(ticket, "Ticket llamado nuevamente."));
+    }
+
     // ─── POST /api/tickets/{ticketId}/en-atencion ────────────────────────────
 
     [HttpPost("{ticketId:long}/en-atencion")]
@@ -124,6 +149,18 @@ public sealed class TicketsController(ITicketsService service) : ControllerBase
     {
         var ticket = await service.FinalizarTicketAsync(ticketId, request.Motivo, ct);
         return Ok(ApiResponse<TicketDto>.Success(ticket, "Ticket finalizado."));
+    }
+
+    // ─── POST /api/tickets/{ticketId}/cancelar ───────────────────────────────
+
+    [HttpPost("{ticketId:long}/cancelar")]
+    public async Task<IActionResult> Cancelar(
+        long ticketId,
+        [FromBody] CancelarTicketRequest request,
+        CancellationToken ct)
+    {
+        var ticket = await service.CancelarTicketAsync(ticketId, request.Motivo, request.UsuarioId, ct);
+        return Ok(ApiResponse<TicketDto>.Success(ticket, "Ticket cancelado."));
     }
 
     // ─── POST /api/tickets/no-show/procesar ─────────────────────────────────
