@@ -1,5 +1,5 @@
-using System.Security.Claims;
 using Clinica.Application.Contracts;
+using Clinica.Application.DTOs.Common;
 using Clinica.Application.DTOs.Pacientes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,13 +24,13 @@ public sealed class PacientesController : ControllerBase
     {
         var claim = User.Claims.FirstOrDefault(c => c.Type == "usuarioId")?.Value;
         if (!int.TryParse(claim, out var usuarioId))
-            return Unauthorized(new { success = false, message = "Token invalido." });
+            return Unauthorized(ApiResponse<object>.Fail("Token invalido.", "TOKEN_INVALIDO"));
 
         var paciente = await _service.ObtenerPorUsuarioAsync(usuarioId);
         if (paciente is null)
-            return NotFound(new { success = false, message = "Paciente no encontrado." });
+            return NotFound(ApiResponse<object>.Fail("Paciente no encontrado.", "NO_ENCONTRADO"));
 
-        return Ok(new { success = true, data = paciente });
+        return Ok(ApiResponse<PacienteResponseDto>.Success(paciente));
     }
 
     // GET /api/pacientes/{id}
@@ -38,7 +38,7 @@ public sealed class PacientesController : ControllerBase
     public async Task<IActionResult> Obtener(int id)
     {
         var paciente = await _service.ObtenerAsync(id);
-        return Ok(new { success = true, data = paciente });
+        return Ok(ApiResponse<PacienteResponseDto>.Success(paciente!));
     }
 
     // PUT /api/pacientes/{id}
@@ -47,7 +47,7 @@ public sealed class PacientesController : ControllerBase
     {
         dto.PacienteId = id;
         var paciente = await _service.UpsertAsync(dto);
-        return Ok(new { success = true, message = "Paciente actualizado correctamente.", data = paciente });
+        return Ok(ApiResponse<PacienteResponseDto>.Success(paciente!, "Paciente actualizado correctamente."));
     }
 
     // POST /api/pacientes
@@ -55,8 +55,8 @@ public sealed class PacientesController : ControllerBase
     public async Task<IActionResult> Crear([FromBody] PacienteUpsertDto dto)
     {
         var paciente = await _service.UpsertAsync(dto);
-        return CreatedAtAction(nameof(Obtener), new { id = paciente.PacienteId },
-            new { success = true, message = "Paciente creado correctamente.", data = paciente });
+        return StatusCode(201,
+            ApiResponse<PacienteResponseDto>.Success(paciente!, "Paciente creado correctamente."));
     }
 
     // GET /api/pacientes/{id}/alergias
@@ -64,7 +64,7 @@ public sealed class PacientesController : ControllerBase
     public async Task<IActionResult> ListarAlergias(int id)
     {
         var alergias = await _service.ListarAlergiasAsync(id);
-        return Ok(new { success = true, data = alergias });
+        return Ok(ApiResponse<List<AlergiaResponseDto>>.Success(alergias!));
     }
 
     // POST /api/pacientes/{id}/alergias
@@ -72,7 +72,7 @@ public sealed class PacientesController : ControllerBase
     public async Task<IActionResult> AgregarAlergia(int id, [FromBody] AlergiaRequestDto dto)
     {
         await _service.AgregarAlergiaAsync(id, dto);
-        return Ok(new { success = true, message = "Alergia agregada correctamente." });
+        return Ok(ApiResponse<object>.Success(null!, "Alergia agregada correctamente."));
     }
 
     // POST /api/pacientes/{id}/alergias/{alergiaId}/quitar
@@ -80,6 +80,6 @@ public sealed class PacientesController : ControllerBase
     public async Task<IActionResult> QuitarAlergia(int id, int alergiaId)
     {
         await _service.QuitarAlergiaAsync(id, alergiaId);
-        return Ok(new { success = true, message = "Alergia desactivada correctamente." });
+        return Ok(ApiResponse<object>.Success(null!, "Alergia desactivada correctamente."));
     }
 }

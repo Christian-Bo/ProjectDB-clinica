@@ -1,5 +1,6 @@
 using Clinica.Application.Contracts;
 using Clinica.Application.DTOs.Citas;
+using Clinica.Application.DTOs.Common;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Clinica.API.Controllers;
@@ -22,8 +23,8 @@ public sealed class CitasController : ControllerBase
     {
         var key = idempotencyKey ?? Guid.NewGuid();
         var cita = await _service.ReservarAsync(dto, key, 1);
-        return CreatedAtAction(nameof(Obtener), new { citaId = cita.CitaId },
-            new { success = true, message = "Cita reservada correctamente.", data = cita });
+        return StatusCode(201,
+            ApiResponse<CitaResponseDto>.Success(cita!, "Cita reservada correctamente."));
     }
 
     // POST /api/reservar/cita/{citaId}/confirmar
@@ -35,7 +36,7 @@ public sealed class CitasController : ControllerBase
     {
         var key = idempotencyKey ?? Guid.NewGuid();
         var cita = await _service.ConfirmarAsync(citaId, dto, key);
-        return Ok(new { success = true, message = "Cita confirmada correctamente.", data = cita });
+        return Ok(ApiResponse<CitaResponseDto>.Success(cita!, "Cita confirmada correctamente."));
     }
 
     // POST /api/citas/{citaId}/cancelar
@@ -43,7 +44,7 @@ public sealed class CitasController : ControllerBase
     public async Task<IActionResult> Cancelar(long citaId, [FromBody] CancelarCitaRequestDto dto)
     {
         await _service.CancelarAsync(citaId, dto);
-        return Ok(new { success = true, message = "Cita cancelada correctamente." });
+        return Ok(ApiResponse<object>.Success(null!, "Cita cancelada correctamente."));
     }
 
     // POST /api/citas/{citaId}/reprogramar
@@ -51,7 +52,7 @@ public sealed class CitasController : ControllerBase
     public async Task<IActionResult> Reprogramar(long citaId, [FromBody] ReprogramarCitaRequestDto dto)
     {
         await _service.ReprogramarAsync(citaId, dto);
-        return Ok(new { success = true, message = "Cita reprogramada correctamente." });
+        return Ok(ApiResponse<object>.Success(null!, "Cita reprogramada correctamente."));
     }
 
     // GET /api/citas/{citaId}
@@ -59,7 +60,7 @@ public sealed class CitasController : ControllerBase
     public async Task<IActionResult> Obtener(long citaId)
     {
         var cita = await _service.ObtenerAsync(citaId);
-        return Ok(new { success = true, data = cita });
+        return Ok(ApiResponse<CitaResponseDto>.Success(cita!));
     }
 
     // GET /api/citas
@@ -67,6 +68,6 @@ public sealed class CitasController : ControllerBase
     public async Task<IActionResult> Listar([FromQuery] ListarCitasRequestDto filtros)
     {
         var citas = await _service.ListarAsync(filtros);
-        return Ok(new { success = true, data = citas });
+        return Ok(ApiResponse<List<CitaResponseDto>>.Success(citas!));
     }
 }

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Clinica.Application.Contracts;
 using Clinica.Application.DTOs.Auth;
+using Clinica.Application.DTOs.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -22,14 +23,14 @@ public sealed class AuthController : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginRequestDto dto)
     {
         if (!ModelState.IsValid)
-            return BadRequest(new { success = false, message = "Datos invalidos." });
+            return BadRequest(ApiResponse<object>.Fail("Datos invalidos.", "DATOS_INVALIDOS"));
 
-        var (success, errorCode, message, data) = await _authService.LoginAsync(dto);
+        var (ok, errorCode, message, data) = await _authService.LoginAsync(dto);
 
-        if (!success)
-            return Unauthorized(new { success = false, errorCode, message });
+        if (!ok)
+            return Unauthorized(ApiResponse<object>.Fail(message, errorCode ?? "ERROR"));
 
-        return Ok(new { success = true, message, data });
+        return Ok(ApiResponse<object>.Success(data!, message));
     }
 
     [HttpGet("me")]
@@ -38,13 +39,13 @@ public sealed class AuthController : ControllerBase
     {
         var claim = User.FindFirstValue("usuarioId");
         if (!int.TryParse(claim, out var usuarioId))
-            return Unauthorized(new { success = false, message = "Token invalido." });
+            return Unauthorized(ApiResponse<object>.Fail("Token invalido.", "TOKEN_INVALIDO"));
 
-        var (success, data) = await _authService.GetMeAsync(usuarioId);
-        if (!success)
-            return NotFound(new { success = false, message = "Usuario no encontrado." });
+        var (ok, data) = await _authService.GetMeAsync(usuarioId);
+        if (!ok)
+            return NotFound(ApiResponse<object>.Fail("Usuario no encontrado.", "NO_ENCONTRADO"));
 
-        return Ok(new { success = true, data });
+        return Ok(ApiResponse<object>.Success(data!));
     }
 
     [HttpPost("registro")]
@@ -52,14 +53,14 @@ public sealed class AuthController : ControllerBase
     public async Task<IActionResult> Registro([FromBody] RegistroUsuarioRequestDto dto)
     {
         if (!ModelState.IsValid)
-            return BadRequest(new { success = false, message = "Datos invalidos." });
+            return BadRequest(ApiResponse<object>.Fail("Datos invalidos.", "DATOS_INVALIDOS"));
 
-        var (success, errorCode, message, data) = await _authService.RegistrarUsuarioAsync(dto);
+        var (ok, errorCode, message, data) = await _authService.RegistrarUsuarioAsync(dto);
 
-        if (!success)
-            return BadRequest(new { success = false, errorCode, message });
+        if (!ok)
+            return BadRequest(ApiResponse<object>.Fail(message, errorCode ?? "ERROR"));
 
-        return StatusCode(201, new { success = true, message, data });
+        return StatusCode(201, ApiResponse<object>.Success(data!, message));
     }
 
     [HttpPost("registro-paciente")]
@@ -67,16 +68,16 @@ public sealed class AuthController : ControllerBase
     public async Task<IActionResult> RegistroPaciente([FromBody] RegistroRequestDto dto)
     {
         if (!ModelState.IsValid)
-            return BadRequest(new { success = false, message = "Datos invalidos." });
+            return BadRequest(ApiResponse<object>.Fail("Datos invalidos.", "DATOS_INVALIDOS"));
 
-        var (success, errorCode, message, data) = await _authService.RegistrarPacienteAsync(dto);
+        var (ok, errorCode, message, data) = await _authService.RegistrarPacienteAsync(dto);
 
-        if (!success)
+        if (!ok)
         {
-            var statusCode = errorCode is "CORREO_DUPLICADO" or "DOCUMENTO_DUPLICADO" ? 409 : 422;
-            return StatusCode(statusCode, new { success = false, errorCode, message });
+            var status = errorCode is "CORREO_DUPLICADO" or "DOCUMENTO_DUPLICADO" ? 409 : 422;
+            return StatusCode(status, ApiResponse<object>.Fail(message, errorCode ?? "ERROR"));
         }
 
-        return StatusCode(201, new { success = true, message, data });
+        return StatusCode(201, ApiResponse<object>.Success(data!, message));
     }
 }

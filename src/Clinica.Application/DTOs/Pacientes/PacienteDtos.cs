@@ -57,6 +57,9 @@ public sealed class AlergiaResponseDto
     public int PacienteAlergiaId { get; set; }
     public int PacienteId { get; set; }
     public int AlergiaId { get; set; }
+    public string NombreAlergia { get; set; } = string.Empty;
+    public string TipoAlergia { get; set; } = string.Empty;
+    public string PrincipioActivo { get; set; } = string.Empty;
     public string Severidad { get; set; } = string.Empty;
     public string? Descripcion { get; set; }
     public DateTime? FechaDeteccion { get; set; }
