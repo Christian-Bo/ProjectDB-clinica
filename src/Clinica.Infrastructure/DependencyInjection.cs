@@ -39,7 +39,6 @@ public static class DependencyInjection
         services.AddScoped<IConsultasService,          ConsultasService>();
         services.AddScoped<IOrdenesService,            OrdenesService>();
         services.AddScoped<IRecetasService,            RecetasService>();
-        services.AddScoped<IReportesService,           ReportesService>();
 
         return services;
     }
