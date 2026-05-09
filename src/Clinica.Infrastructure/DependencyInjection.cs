@@ -15,6 +15,30 @@ public static class DependencyInjection
         services.AddSingleton<DatabaseConnection>();
         services.AddSingleton<SqlExecutor>();
 
+        // ── Módulo 5 · Farmacia ───────────────────────────────────────────────
+        services.AddScoped<IFarmaciaService, FarmaciaService>();
+
+        // ── Módulo 5 · Inventario ─────────────────────────────────────────────
+        services.AddScoped<IInventarioService, InventarioService>();
+
+        // ── Módulo 5 · Compras ────────────────────────────────────────────────
+        services.AddScoped<IProveedoresService, ProveedoresService>();
+        services.AddScoped<IOrdenesCompraService, OrdenesCompraService>();
+
+        // ── Módulo 5 · Cobros ─────────────────────────────────────────────────
+        services.AddScoped<ICuentasService, CuentasService>();
+        services.AddScoped<IPagosService, PagosService>();
+
+        // ── Módulo 5 · Notificaciones ─────────────────────────────────────────
+        services.AddScoped<IPlantillasNotificacionService, PlantillasNotificacionService>();
+        services.AddScoped<IColaNotificacionesService, ColaNotificacionesService>();
+
+        // ── Módulo 5 · Telemedicina ───────────────────────────────────────────
+        services.AddScoped<ISesionesTelemedicinaService, SesionesTelemedicinaService>();
+
+        // ── Módulo 5 · Reportes / ETL ─────────────────────────────────────────
+        services.AddScoped<IReportesEtlService, ReportesEtlService>();
+
         // Seguridad — Dev1
         services.AddScoped<PasswordHasher>();
         services.AddScoped<JwtTokenGenerator>();
@@ -28,17 +52,17 @@ public static class DependencyInjection
         services.AddScoped<PacientesRepository>();
 
         // Servicios
-        services.AddScoped<IAuthService,               AuthService>();
-        services.AddScoped<IDatabaseHealthService,     DatabaseHealthService>();
-        services.AddScoped<ITicketQueueService,        TicketQueueService>();
-        services.AddScoped<ITicketsService,            TicketsService>();
-        services.AddScoped<IPantallaService,           PantallaService>();
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IDatabaseHealthService, DatabaseHealthService>();
+        services.AddScoped<ITicketQueueService, TicketQueueService>();
+        services.AddScoped<ITicketsService, TicketsService>();
+        services.AddScoped<IPantallaService, PantallaService>();
         services.AddScoped<ICatalogosRecepcionService, CatalogosRecepcionService>();
-        services.AddScoped<ICitasService,              CitasService>();
-        services.AddScoped<IPacientesService,          PacientesService>();
-        services.AddScoped<IConsultasService,          ConsultasService>();
-        services.AddScoped<IOrdenesService,            OrdenesService>();
-        services.AddScoped<IRecetasService,            RecetasService>();
+        services.AddScoped<ICitasService, CitasService>();
+        services.AddScoped<IPacientesService, PacientesService>();
+        services.AddScoped<IConsultasService, ConsultasService>();
+        services.AddScoped<IOrdenesService, OrdenesService>();
+        services.AddScoped<IRecetasService, RecetasService>();
 
         return services;
     }
