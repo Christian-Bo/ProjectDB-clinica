@@ -91,3 +91,18 @@ public sealed class MedicamentoListarFiltrosDto
     /// <summary>Busca en Nombre, PrincipioActivo y CodigoInterno</summary>
     public string? Texto { get; set; }
 }
+
+/// <summary>Receta pendiente de despacho en farmacia.</summary>
+public sealed class RecetaPendienteDto
+{
+    public long RecetaId { get; init; }
+    public long ConsultaId { get; init; }
+    public int PacienteId { get; init; }
+    public string PacienteNombre { get; init; } = string.Empty;
+    public int? MedicoId { get; init; }
+    public string MedicoNombre { get; init; } = string.Empty;
+    public string Estado { get; init; } = string.Empty;
+    public DateTime FechaEmision { get; init; }
+    public string? Observaciones { get; init; }
+    public int TotalMedicamentos { get; init; }
+}

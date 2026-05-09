@@ -58,12 +58,11 @@ public static class DependencyInjection
         services.AddScoped<ITicketsService, TicketsService>();
         services.AddScoped<IPantallaService, PantallaService>();
         services.AddScoped<ICatalogosRecepcionService, CatalogosRecepcionService>();
-        services.AddScoped<ICitasService, CitasService>();
-        services.AddScoped<IPacientesService, PacientesService>();
-        services.AddScoped<IConsultasService, ConsultasService>();
-        services.AddScoped<IOrdenesService, OrdenesService>();
-        services.AddScoped<IRecetasService, RecetasService>();
-
+        services.AddScoped<ICitasService,              CitasService>();
+        services.AddScoped<IPacientesService,          PacientesService>();
+        services.AddScoped<IConsultasService,          ConsultasService>();
+        services.AddScoped<IOrdenesService,            OrdenesService>();
+        services.AddScoped<ISecretariaService,         SecretariaService>();
         return services;
     }
 }

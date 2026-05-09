@@ -221,4 +221,51 @@ public sealed class FarmaciaService : IFarmaciaService
         public static SpEnv Sin() => new() { HttpStatus = 500, Code = "SP_SIN_RESPUESTA", Message = "El SP no devolvió resultado." };
         public static SpEnv Error(string m) => new() { HttpStatus = 500, Code = "ERROR_INFRAESTRUCTURA", Message = m };
     }
+
+    public async Task<ServiceOperationResult<IReadOnlyList<RecetaPendienteDto>>> ListarRecetasPendientesAsync(
+    int? pacienteId, string? texto, CancellationToken ct = default)
+{
+    await using var conn = _db.CreateConnection();
+    await conn.OpenAsync(ct);
+
+    await using var cmd = Sp(conn, "dbo.sp_Receta_ListarPendientesDespacho");
+    P(cmd, "@PacienteId", pacienteId);
+    P(cmd, "@Texto",      texto);
+
+    try
+    {
+        var list = new List<RecetaPendienteDto>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            list.Add(new RecetaPendienteDto
+            {
+                RecetaId         = reader.GetInt64OrDefault("RecetaId"),
+                ConsultaId       = reader.GetInt64OrDefault("ConsultaId"),
+                PacienteId       = reader.GetInt32OrDefault("PacienteId"),
+                PacienteNombre   = reader.GetNullableString("PacienteNombre") ?? string.Empty,
+                MedicoId         = reader.GetNullableInt32("MedicoId"),
+                MedicoNombre     = reader.GetNullableString("MedicoNombre") ?? string.Empty,
+                Estado           = reader.GetNullableString("Estado") ?? string.Empty,
+                FechaEmision     = reader.GetDateTimeOrDefault("FechaEmision"),
+                Observaciones    = reader.GetNullableString("Observaciones"),
+                TotalMedicamentos = reader.GetInt32OrDefault("TotalMedicamentos")
+            });
+        }
+
+        return new ServiceOperationResult<IReadOnlyList<RecetaPendienteDto>>
+        {
+            HttpStatus = 200,
+            Code    = "RECETAS_PENDIENTES_OK",
+            Message = $"{list.Count} receta(s) pendiente(s) de despacho.",
+            Data    = list
+        };
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error en sp_Receta_ListarPendientesDespacho");
+        return new ServiceOperationResult<IReadOnlyList<RecetaPendienteDto>>
+            { HttpStatus = 500, Code = "ERROR_INFRAESTRUCTURA", Message = ex.Message };
+    }
+}
 }

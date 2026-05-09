@@ -107,3 +107,32 @@ public sealed class PagoDto
     public string? Referencia { get; init; }
     public DateTime FechaPago { get; init; }
 }
+
+/// <summary>Detalle completo de una cuenta con sus líneas y pagos.</summary>
+public sealed class CuentaDetalleDto
+{
+    public CuentaDto Cuenta { get; init; } = new();
+    public List<DetalleCuentaLineaDto> Detalle { get; init; } = new();
+    public List<PagoDto> Pagos { get; init; } = new();
+}
+
+/// <summary>Línea de detalle de una cuenta.</summary>
+public sealed class DetalleCuentaLineaDto
+{
+    public long CuentaDetalleId { get; init; }
+    public long CuentaId { get; init; }
+    public string TipoConcepto { get; init; } = string.Empty;
+    public string Descripcion { get; init; } = string.Empty;
+    public decimal Cantidad { get; init; }
+    public decimal PrecioUnitario { get; init; }
+    public decimal Subtotal { get; init; }
+}
+
+/// <summary>Método de pago del catálogo cfg.MetodosPago.</summary>
+public sealed class MetodoPagoDto
+{
+    public int MetodoPagoId { get; init; }
+    public string Nombre { get; init; } = string.Empty;
+    public bool RequiereReferencia { get; init; }
+    public bool RequiereComprobante { get; init; }
+}

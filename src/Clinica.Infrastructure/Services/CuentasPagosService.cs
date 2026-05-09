@@ -8,14 +8,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Clinica.Infrastructure.Services;
 
-// =============================================================================
-// CuentasService
-// SP: sp_GenerarCuentaDesdeCita
-//   Params: @CitaId BIGINT, @CreadoPor INT, @Detalles TVP dbo.TVP_DetallesCuenta
-//   TVP cols: TipoConcepto NVARCHAR(20), Descripcion NVARCHAR(200),
-//             Cantidad DECIMAL(8,2), PrecioUnitario DECIMAL(10,2)
-//   Devuelve: HttpStatus | Codigo | CuentaId | Mensaje
-// =============================================================================
 public sealed class CuentasService : ICuentasService
 {
     private readonly DatabaseConnection _db;
@@ -37,7 +29,6 @@ public sealed class CuentasService : ICuentasService
         P(cmd, "@CitaId",    req.CitaId);
         P(cmd, "@CreadoPor", req.CreadoPor);
 
-        // TVP dbo.TVP_DetallesCuenta
         var tvp = new DataTable();
         tvp.Columns.Add("TipoConcepto",   typeof(string));
         tvp.Columns.Add("Descripcion",    typeof(string));
@@ -80,12 +71,153 @@ public sealed class CuentasService : ICuentasService
         }
     }
 
-    private async Task<CuentaDto?> CargarCuentaAsync(SqlConnection conn, long cuentaId, CancellationToken ct)
+    public async Task<ServiceOperationResult<CuentaDetalleDto>> ObtenerAsync(
+        long cuentaId, CancellationToken ct = default)
+    {
+        await using var conn = _db.CreateConnection();
+        await conn.OpenAsync(ct);
+
+        await using var cmd = Sp(conn, "dbo.sp_Cuenta_Obtener");
+        P(cmd, "@CuentaId", cuentaId);
+
+        try
+        {
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+
+            if (!await reader.ReadAsync(ct))
+                return new ServiceOperationResult<CuentaDetalleDto>
+                    { HttpStatus = 404, Code = "CUENTA_NO_ENCONTRADA", Message = "Cuenta no encontrada." };
+
+            var cuenta = new CuentaDto
+            {
+                CuentaId               = reader.GetInt64OrDefault("CuentaId"),
+                CitaId                 = reader.GetInt64OrDefault("CitaId"),
+                PacienteId             = reader.GetInt32OrDefault("PacienteId"),
+                PacienteNombre         = reader.GetNullableString("PacienteNombre") ?? string.Empty,
+                SubtotalConsulta       = Dec(reader, "SubtotalConsulta"),
+                SubtotalMedicamentos   = Dec(reader, "SubtotalMedicamentos"),
+                SubtotalProcedimientos = Dec(reader, "SubtotalProcedimientos"),
+                Descuento              = Dec(reader, "Descuento"),
+                Total                  = Dec(reader, "Total"),
+                Saldo                  = Dec(reader, "Saldo"),
+                Estado                 = reader.GetNullableString("Estado") ?? string.Empty,
+                FechaEmision           = reader.GetDateTimeOrDefault("FechaEmision"),
+                FechaPago              = reader.GetNullableDateTime("FechaPago")
+            };
+
+            var detalle = new List<DetalleCuentaLineaDto>();
+            if (await reader.NextResultAsync(ct))
+            {
+                while (await reader.ReadAsync(ct))
+                {
+                    detalle.Add(new DetalleCuentaLineaDto
+                    {
+                        CuentaDetalleId = reader.GetInt64OrDefault("CuentaDetalleId"),
+                        CuentaId        = reader.GetInt64OrDefault("CuentaId"),
+                        TipoConcepto    = reader.GetNullableString("TipoConcepto") ?? string.Empty,
+                        Descripcion     = reader.GetNullableString("Descripcion") ?? string.Empty,
+                        Cantidad        = Dec(reader, "Cantidad"),
+                        PrecioUnitario  = Dec(reader, "PrecioUnitario"),
+                        Subtotal        = Dec(reader, "Subtotal")
+                    });
+                }
+            }
+
+            var pagos = new List<PagoDto>();
+            if (await reader.NextResultAsync(ct))
+            {
+                while (await reader.ReadAsync(ct))
+                {
+                    pagos.Add(new PagoDto
+                    {
+                        PagoId       = reader.GetInt64OrDefault("PagoId"),
+                        CuentaId     = reader.GetInt64OrDefault("CuentaId"),
+                        MetodoPagoId = reader.GetInt32OrDefault("MetodoPagoId"),
+                        Monto        = Dec(reader, "Monto"),
+                        Referencia   = reader.GetNullableString("Referencia"),
+                        FechaPago    = reader.GetDateTimeOrDefault("FechaPago")
+                    });
+                }
+            }
+
+            return new ServiceOperationResult<CuentaDetalleDto>
+            {
+                HttpStatus = 200,
+                Code    = "CUENTA_OK",
+                Message = "Cuenta obtenida correctamente.",
+                Data    = new CuentaDetalleDto
+                {
+                    Cuenta  = cuenta,
+                    Detalle = detalle,
+                    Pagos   = pagos
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en sp_Cuenta_Obtener");
+            return new ServiceOperationResult<CuentaDetalleDto>
+                { HttpStatus = 500, Code = "ERROR_INFRAESTRUCTURA", Message = ex.Message };
+        }
+    }
+
+    public async Task<ServiceOperationResult<IReadOnlyList<CuentaDto>>> ListarAsync(
+        int? pacienteId, string? estado, CancellationToken ct = default)
+    {
+        await using var conn = _db.CreateConnection();
+        await conn.OpenAsync(ct);
+
+        await using var cmd = Sp(conn, "dbo.sp_Cuenta_Listar");
+        P(cmd, "@PacienteId", pacienteId);
+        P(cmd, "@Estado",     estado);
+
+        try
+        {
+            var list = new List<CuentaDto>();
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                list.Add(new CuentaDto
+                {
+                    CuentaId               = reader.GetInt64OrDefault("CuentaId"),
+                    CitaId                 = reader.GetInt64OrDefault("CitaId"),
+                    PacienteId             = reader.GetInt32OrDefault("PacienteId"),
+                    PacienteNombre         = reader.GetNullableString("PacienteNombre") ?? string.Empty,
+                    SubtotalConsulta       = Dec(reader, "SubtotalConsulta"),
+                    SubtotalMedicamentos   = Dec(reader, "SubtotalMedicamentos"),
+                    SubtotalProcedimientos = Dec(reader, "SubtotalProcedimientos"),
+                    Descuento              = Dec(reader, "Descuento"),
+                    Total                  = Dec(reader, "Total"),
+                    Saldo                  = Dec(reader, "Saldo"),
+                    Estado                 = reader.GetNullableString("Estado") ?? string.Empty,
+                    FechaEmision           = reader.GetDateTimeOrDefault("FechaEmision"),
+                    FechaPago              = reader.GetNullableDateTime("FechaPago")
+                });
+            }
+
+            return new ServiceOperationResult<IReadOnlyList<CuentaDto>>
+            {
+                HttpStatus = 200,
+                Code    = "CUENTAS_LISTADAS",
+                Message = $"{list.Count} cuenta(s) encontrada(s).",
+                Data    = list
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en sp_Cuenta_Listar");
+            return new ServiceOperationResult<IReadOnlyList<CuentaDto>>
+                { HttpStatus = 500, Code = "ERROR_INFRAESTRUCTURA", Message = ex.Message };
+        }
+    }
+
+    private async Task<CuentaDto?> CargarCuentaAsync(
+        SqlConnection conn, long cuentaId, CancellationToken ct)
     {
         await using var cmd = conn.CreateCommand();
-        cmd.CommandType = CommandType.Text;
+        cmd.CommandType    = CommandType.Text;
         cmd.CommandTimeout = 30;
-        cmd.CommandText = @"
+        cmd.CommandText    = @"
 SELECT TOP (1)
     c.CuentaId, c.CitaId, c.PacienteId,
     COALESCE(NULLIF(LTRIM(RTRIM(CONCAT(ISNULL(u.Nombres,''),' ',ISNULL(u.Apellidos,'')))), ''),
@@ -101,7 +233,8 @@ FROM dbo.Cuentas c
 JOIN  dbo.Pacientes p ON p.PacienteId = c.PacienteId
 LEFT JOIN dbo.Usuarios u ON u.UsuarioId = p.UsuarioId
 WHERE c.CuentaId = @CuentaId;";
-        cmd.Parameters.Add(new SqlParameter("@CuentaId", SqlDbType.BigInt) { Value = cuentaId });
+        cmd.Parameters.Add(
+            new SqlParameter("@CuentaId", SqlDbType.BigInt) { Value = cuentaId });
 
         await using var r = await cmd.ExecuteReaderAsync(ct);
         if (!await r.ReadAsync(ct)) return null;
@@ -136,20 +269,16 @@ WHERE c.CuentaId = @CuentaId;";
     }
 
     private static SqlCommand Sp(SqlConnection c, string n) =>
-        new() { Connection = c, CommandType = CommandType.StoredProcedure, CommandText = n, CommandTimeout = 60 };
+        new() { Connection = c, CommandType = CommandType.StoredProcedure,
+                CommandText = n, CommandTimeout = 60 };
+
     private static void P(SqlCommand cmd, string n, object? v) =>
         cmd.Parameters.Add(new SqlParameter(n, v ?? DBNull.Value));
+
     private static ServiceOperationResult<CuentaDto> Err(string code, string msg) =>
         new() { HttpStatus = 500, Code = code, Message = msg };
 }
 
-// =============================================================================
-// PagosService
-// SP: sp_RegistrarPagoCuenta
-//   Params: @CuentaId, @MetodoPagoId, @Monto, @Referencia, @ComprobanteUrl,
-//           @Observaciones, @RegistradoPor, @IdempotencyKey UNIQUEIDENTIFIER
-//   Devuelve: HttpStatus | Codigo | PagoId | Mensaje
-// =============================================================================
 public sealed class PagosService : IPagosService
 {
     private readonly DatabaseConnection _db;
@@ -212,10 +341,52 @@ public sealed class PagosService : IPagosService
         }
     }
 
+    public async Task<ServiceOperationResult<IReadOnlyList<MetodoPagoDto>>> ListarMetodosPagoAsync(
+        CancellationToken ct = default)
+    {
+        await using var conn = _db.CreateConnection();
+        await conn.OpenAsync(ct);
+
+        await using var cmd = Sp(conn, "dbo.sp_MetodoPago_Listar");
+
+        try
+        {
+            var list = new List<MetodoPagoDto>();
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+            {
+                list.Add(new MetodoPagoDto
+                {
+                    MetodoPagoId        = reader.GetInt32OrDefault("MetodoPagoId"),
+                    Nombre              = reader.GetNullableString("Nombre") ?? string.Empty,
+                    RequiereReferencia  = reader.GetBooleanOrDefault("RequiereReferencia"),
+                    RequiereComprobante = reader.GetBooleanOrDefault("RequiereComprobante")
+                });
+            }
+
+            return new ServiceOperationResult<IReadOnlyList<MetodoPagoDto>>
+            {
+                HttpStatus = 200,
+                Code    = "METODOS_PAGO_OK",
+                Message = $"{list.Count} método(s) de pago disponible(s).",
+                Data    = list
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en sp_MetodoPago_Listar");
+            return new ServiceOperationResult<IReadOnlyList<MetodoPagoDto>>
+                { HttpStatus = 500, Code = "ERROR_INFRAESTRUCTURA", Message = ex.Message };
+        }
+    }
+
     private static SqlCommand Sp(SqlConnection c, string n) =>
-        new() { Connection = c, CommandType = CommandType.StoredProcedure, CommandText = n, CommandTimeout = 60 };
+        new() { Connection = c, CommandType = CommandType.StoredProcedure,
+                CommandText = n, CommandTimeout = 60 };
+
     private static void P(SqlCommand cmd, string n, object? v) =>
         cmd.Parameters.Add(new SqlParameter(n, v ?? DBNull.Value));
+
     private static ServiceOperationResult<PagoDto> Err(string code, string msg) =>
         new() { HttpStatus = 500, Code = code, Message = msg };
 }
