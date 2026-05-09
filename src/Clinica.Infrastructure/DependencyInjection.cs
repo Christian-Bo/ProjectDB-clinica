@@ -15,6 +15,7 @@ public static class DependencyInjection
         services.AddSingleton<DatabaseConnection>();
         services.AddSingleton<SqlExecutor>();
 
+        // ── Módulo 5 · Farmacia ───────────────────────────────────────────────
         services.AddScoped<IFarmaciaService, FarmaciaService>();
 
         // ── Módulo 5 · Inventario ─────────────────────────────────────────────
@@ -51,17 +52,17 @@ public static class DependencyInjection
         services.AddScoped<PacientesRepository>();
 
         // Servicios
-        services.AddScoped<IAuthService,               AuthService>();
-        services.AddScoped<IDatabaseHealthService,     DatabaseHealthService>();
-        services.AddScoped<ITicketQueueService,        TicketQueueService>();
-        services.AddScoped<ITicketsService,            TicketsService>();
-        services.AddScoped<IPantallaService,           PantallaService>();
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IDatabaseHealthService, DatabaseHealthService>();
+        services.AddScoped<ITicketQueueService, TicketQueueService>();
+        services.AddScoped<ITicketsService, TicketsService>();
+        services.AddScoped<IPantallaService, PantallaService>();
         services.AddScoped<ICatalogosRecepcionService, CatalogosRecepcionService>();
-        services.AddScoped<ICitasService,              CitasService>();
-        services.AddScoped<IPacientesService,          PacientesService>();
-        services.AddScoped<IConsultasService,          ConsultasService>();
-        services.AddScoped<IOrdenesService,            OrdenesService>();
-        services.AddScoped<IRecetasService,            RecetasService>();
+        services.AddScoped<ICitasService, CitasService>();
+        services.AddScoped<IPacientesService, PacientesService>();
+        services.AddScoped<IConsultasService, ConsultasService>();
+        services.AddScoped<IOrdenesService, OrdenesService>();
+        services.AddScoped<IRecetasService, RecetasService>();
 
         return services;
     }

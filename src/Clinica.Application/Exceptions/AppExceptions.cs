@@ -1,0 +1,1 @@
+namespace Clinica.Application.Exceptions;
