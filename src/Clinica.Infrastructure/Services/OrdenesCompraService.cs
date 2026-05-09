@@ -211,25 +211,25 @@ public sealed class OrdenesCompraService : IOrdenesCompraService
             };
         }
 
-        if (await reader.NextResultAsync(ct))
+if (await reader.NextResultAsync(ct))
+{
+    while (await reader.ReadAsync(ct))
+    {
+        detalles.Add(new OrdenCompraDetalleDto
         {
-            while (await reader.ReadAsync(ct))
-            {
-                detalles.Add(new OrdenCompraDetalleDto
-                {
-                    OrdenCompraDetalleId = reader.GetInt64OrDefault("OrdenCompraDetalleId"),
-                    OrdenCompraId        = reader.GetInt32OrDefault("OrdenCompraId"),
-                    MedicamentoId        = reader.GetInt32OrDefault("MedicamentoId"),
-                    CantidadSolicitada   = GetDecimal(reader, "CantidadSolicitada"),
-                    CantidadRecibida     = GetDecimal(reader, "CantidadRecibida"),
-                    PrecioUnitario       = GetDecimal(reader, "PrecioUnitario"),
-                    SubtotalLinea        = GetDecimal(reader, "SubtotalLinea"),
-                    FechaVencimientoLote = reader.GetNullableDateTime("FechaVencimientoLote"),
-                    LoteProveedor        = reader.GetNullableString("LoteProveedor")
-                });
-            }
-        }
-
+            OrdenCompraDetalleId = reader.GetInt64OrDefault("OrdenCompraDetalleId"),
+            OrdenCompraId        = reader.GetInt32OrDefault("OrdenCompraId"),
+            MedicamentoId        = reader.GetInt32OrDefault("MedicamentoId"),
+            MedicamentoNombre    = reader.GetNullableString("NombreMedicamento") ?? string.Empty,
+            CantidadSolicitada   = GetDecimal(reader, "CantidadSolicitada"),
+            CantidadRecibida     = GetDecimal(reader, "CantidadRecibida"),
+            PrecioUnitario       = GetDecimal(reader, "PrecioUnitario"),
+            SubtotalLinea        = GetDecimal(reader, "SubtotalLinea"),
+            FechaVencimientoLote = reader.GetNullableDateTime("FechaVencimientoLote"),
+            LoteProveedor        = reader.GetNullableString("LoteProveedor")
+        });
+    }
+}
         if (header is null) return null;
 
         return new OrdenCompraDto
