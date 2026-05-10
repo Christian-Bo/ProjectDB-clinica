@@ -62,7 +62,7 @@ public static class DependencyInjection
         services.AddScoped<IPacientesService,          PacientesService>();
         services.AddScoped<IConsultasService,          ConsultasService>();
         services.AddScoped<IOrdenesService,            OrdenesService>();
-        services.AddScoped<ISecretariaService,         SecretariaService>();
+        //services.AddScoped<ISecretariaService,         SecretariaService>();
         return services;
     }
 }
