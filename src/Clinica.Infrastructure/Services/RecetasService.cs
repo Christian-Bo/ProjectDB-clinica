@@ -34,17 +34,16 @@ public sealed class RecetasService : IRecetasService
         await connection.OpenAsync(cancellationToken);
 
         var medicamentosJson = System.Text.Json.JsonSerializer.Serialize(
-    request.Items,
-    new System.Text.Json.JsonSerializerOptions
-    {
-        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
-    });
-_logger.LogInformation(">> JSON medicamentos enviado al SP: {Json}", medicamentosJson);
+            request.Items,
+            new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+            });
 
-await using var command = CreateSpCommand(connection, "dbo.sp_CrearRecetaDesdeConsulta");
-AddParam(command, "@ConsultaId", request.ConsultaId);
-AddParam(command, "@UsuarioId", request.UsuarioId);
-AddParam(command, "@MedicamentosJson", medicamentosJson);
+        await using var command = CreateSpCommand(connection, "dbo.sp_CrearRecetaDesdeConsulta");
+        AddParam(command, "@ConsultaId", request.ConsultaId);
+        AddParam(command, "@UsuarioId", request.UsuarioId);
+        AddParam(command, "@MedicamentosJson", medicamentosJson);
 
         var envelope = await ExecuteEnvelopeAsync(command, cancellationToken);
 
