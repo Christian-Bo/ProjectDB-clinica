@@ -119,7 +119,7 @@ public sealed class ConsultasService : IConsultasService
             cmd.Parameters.AddWithValue("@FrecuenciaCardiaca",     (object?)(request.FrecuenciaCardiaca.HasValue ? (short)request.FrecuenciaCardiaca.Value : (object)DBNull.Value));
             cmd.Parameters.AddWithValue("@FrecuenciaRespiratoria", (object?)(request.FrecuenciaRespiratoria.HasValue ? (short)request.FrecuenciaRespiratoria.Value : (object)DBNull.Value));
             cmd.Parameters.AddWithValue("@SaturacionOxigeno",      (object?)request.SaturacionOxigeno     ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@EscalaDolorr",           DBNull.Value);
+            cmd.Parameters.AddWithValue("@EscalaDolor",           DBNull.Value);
 
             await conn.OpenAsync(cancellationToken);
             await cmd.ExecuteNonQueryAsync(cancellationToken);
