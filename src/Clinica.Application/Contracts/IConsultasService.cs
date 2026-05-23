@@ -11,6 +11,7 @@ namespace Clinica.Application.Contracts;
 // - agregar nota de corrección (append-only)
 // - obtener consulta completa con datos relacionados
 // - historial clínico del paciente
+// - listar consultas con filtros (sp_Consultas_Listar)
 // -----------------------------------------------------------------------------
 public interface IConsultasService
 {
@@ -34,5 +35,9 @@ public interface IConsultasService
 
     Task<ServiceOperationResult<HistorialClinicoResponseDto>> ObtenerHistorialAsync(
         int pacienteId,
+        CancellationToken cancellationToken = default);
+
+    Task<ServiceOperationResult<List<ConsultaListadoDto>>> ListarAsync(
+        ListaConsultasRequestDto filtros,
         CancellationToken cancellationToken = default);
 }

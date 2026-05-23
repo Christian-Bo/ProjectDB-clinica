@@ -26,6 +26,33 @@ public sealed class ConsultasController : BaseController
     }
 
     // -------------------------------------------------------------------------
+    // Lista consultas con filtros opcionales por médico, estado y paciente.
+    // Usado por la página "Mis consultas" del módulo médico.
+    // GET /api/consultas?medicoId=29&estado=CERRADA
+    // -------------------------------------------------------------------------
+    [HttpGet]
+    public async Task<IActionResult> Listar(
+        [FromQuery] int?    medicoId,
+        [FromQuery] string? estado,
+        [FromQuery] int?    pacienteId,
+        [FromQuery] int     pageNumber = 1,
+        [FromQuery] int     pageSize   = 50,
+        CancellationToken   cancellationToken = default)
+    {
+        var filtros = new ListaConsultasRequestDto
+        {
+            MedicoId   = medicoId,
+            Estado     = estado,
+            PacienteId = pacienteId,
+            PageNumber = pageNumber,
+            PageSize   = pageSize,
+        };
+
+        var result = await _consultasService.ListarAsync(filtros, cancellationToken);
+        return ToActionResult(result);
+    }
+
+    // -------------------------------------------------------------------------
     // Abre una consulta desde un ticket válido.
     // El SP valida que el ticket exista y esté en estado apto para atención.
     // -------------------------------------------------------------------------

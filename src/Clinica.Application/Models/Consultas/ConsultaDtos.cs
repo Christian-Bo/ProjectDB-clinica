@@ -71,6 +71,25 @@ public sealed class NotaCorreccionRequestDto
 }
 
 // =============================================================================
+// REQUEST DTO — Listado de consultas (sp_Consultas_Listar)
+// =============================================================================
+
+public sealed class ListaConsultasRequestDto
+{
+    /// <summary>Filtra por médico. Null devuelve todas.</summary>
+    public int?    MedicoId   { get; init; }
+
+    /// <summary>Filtra por estado: ABIERTA, CERRADA, ANULADA. Null devuelve todas.</summary>
+    public string? Estado     { get; init; }
+
+    /// <summary>Filtra por paciente. Null devuelve todas.</summary>
+    public int?    PacienteId { get; init; }
+
+    public int PageNumber { get; init; } = 1;
+    public int PageSize   { get; init; } = 50;
+}
+
+// =============================================================================
 // RESPONSE DTOs
 // =============================================================================
 
@@ -130,6 +149,7 @@ public sealed class HistorialClinicoResponseDto
     public IReadOnlyList<ConsultaResumenDto> Consultas { get; set; } = [];
 }
 
+/// <summary>Resumen de consulta para el historial clínico del paciente.</summary>
 public sealed class ConsultaResumenDto
 {
     public long ConsultaId { get; set; }
@@ -141,4 +161,27 @@ public sealed class ConsultaResumenDto
     public int TotalDiagnosticos { get; set; }
     public int TotalRecetas { get; set; }
     public int TotalOrdenes { get; set; }
+}
+
+/// <summary>
+/// Resumen de consulta para el listado general (sp_Consultas_Listar).
+/// Incluye datos del médico y paciente para mostrar en la grilla.
+/// </summary>
+public sealed class ConsultaListadoDto
+{
+    public long      ConsultaId        { get; set; }
+    public long      TicketId          { get; set; }
+    public int       PacienteId        { get; set; }
+    public string    PacienteNombre    { get; set; } = string.Empty;
+    public int       MedicoId          { get; set; }
+    public string    MedicoNombre      { get; set; } = string.Empty;
+    public string    Estado            { get; set; } = string.Empty;
+    public string    Modalidad         { get; set; } = string.Empty;
+    public string?   MotivoConsulta    { get; set; }
+    public string?   Hallazgos         { get; set; }
+    public string?   Plan              { get; set; }
+    public DateTime  FechaHoraInicio   { get; set; }
+    public DateTime? FechaHoraCierre   { get; set; }
+    public int       TotalDiagnosticos { get; set; }
+    public int       TotalNotas        { get; set; }
 }
