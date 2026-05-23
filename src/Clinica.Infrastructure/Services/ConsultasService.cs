@@ -105,20 +105,21 @@ public sealed class ConsultasService : IConsultasService
             await using var conn = _db.CreateConnection();
             await using var cmd  = CreateSpCommand(conn, "sp_CerrarConsulta");
 
-            cmd.Parameters.AddWithValue("@ConsultaId",            consultaId);
-            cmd.Parameters.AddWithValue("@UsuarioId",             request.UsuarioId ?? 1);
-            cmd.Parameters.AddWithValue("@DiagnosticosJson",      diagnosticosJson);
-            cmd.Parameters.AddWithValue("@Hallazgos",             (object?)request.Hallazgos            ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Plan",                  (object?)request.Plan                 ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Observaciones",         (object?)request.Observaciones        ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@PresionSistolica",      (object?)request.PresionSistolica      ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@PresionDiastolica",     (object?)request.PresionDiastolica     ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@FrecuenciaCardiaca",    (object?)request.FrecuenciaCardiaca    ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@FrecuenciaRespiratoria",(object?)request.FrecuenciaRespiratoria?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@Temperatura",           (object?)request.Temperatura           ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@SaturacionOxigeno",     (object?)request.SaturacionOxigeno     ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@PesoKg",                (object?)request.PesoKg                ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@TallaCm",               (object?)request.TallaCm               ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@ConsultaId",             consultaId);
+            cmd.Parameters.AddWithValue("@UsuarioId",              request.UsuarioId ?? 1);
+            cmd.Parameters.AddWithValue("@DiagnosticosJson",       diagnosticosJson);
+            cmd.Parameters.AddWithValue("@Hallazgos",              (object?)request.Hallazgos             ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@Plan",                   (object?)request.Plan                  ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@Observaciones",          (object?)request.Observaciones         ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@Peso",                   (object?)request.PesoKg                ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@Talla",                  (object?)request.TallaCm               ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@TemperaturaC",           (object?)request.Temperatura           ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@PresionSistolica",       (object?)(request.PresionSistolica.HasValue   ? (short)request.PresionSistolica.Value   : (object)DBNull.Value));
+            cmd.Parameters.AddWithValue("@PresionDiastolica",      (object?)(request.PresionDiastolica.HasValue  ? (short)request.PresionDiastolica.Value  : (object)DBNull.Value));
+            cmd.Parameters.AddWithValue("@FrecuenciaCardiaca",     (object?)(request.FrecuenciaCardiaca.HasValue ? (short)request.FrecuenciaCardiaca.Value : (object)DBNull.Value));
+            cmd.Parameters.AddWithValue("@FrecuenciaRespiratoria", (object?)(request.FrecuenciaRespiratoria.HasValue ? (short)request.FrecuenciaRespiratoria.Value : (object)DBNull.Value));
+            cmd.Parameters.AddWithValue("@SaturacionOxigeno",      (object?)request.SaturacionOxigeno     ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("@EscalaDolorr",           DBNull.Value);
 
             await conn.OpenAsync(cancellationToken);
             await cmd.ExecuteNonQueryAsync(cancellationToken);
