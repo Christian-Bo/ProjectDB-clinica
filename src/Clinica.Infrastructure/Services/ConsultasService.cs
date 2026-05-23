@@ -37,21 +37,36 @@ public sealed class ConsultasService : IConsultasService
 
             cmd.Parameters.AddWithValue("@TicketId",      request.TicketId);
             cmd.Parameters.AddWithValue("@UsuarioId",     request.UsuarioId ?? 1);
-            cmd.Parameters.AddWithValue("@ConsultorioId", 1);
+            cmd.Parameters.AddWithValue("@ConsultorioId", 4); // ConsultorioId válido en BD
             cmd.Parameters.AddWithValue("@Modalidad",     request.Modalidad ?? "PRESENCIAL");
 
             await conn.OpenAsync(cancellationToken);
             await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
 
+            // El SP devuelve sobre estándar: HttpStatus, Codigo, ConsultaId, Mensaje
             if (await reader.ReadAsync(cancellationToken))
             {
+                var httpStatus = reader.GetInt32OrDefault("HttpStatus", 500);
+                var codigo     = reader.GetNullableString("Codigo") ?? "ERROR";
+                var mensaje    = reader.GetNullableString("Mensaje") ?? string.Empty;
                 var consultaId = reader.GetInt64OrDefault("ConsultaId");
+
+                if (httpStatus >= 200 && httpStatus < 300)
+                {
+                    return new ServiceOperationResult<ConsultaResponseDto>
+                    {
+                        HttpStatus = httpStatus,
+                        Code       = codigo,
+                        Message    = mensaje,
+                        Data       = new ConsultaResponseDto { ConsultaId = consultaId }
+                    };
+                }
+
                 return new ServiceOperationResult<ConsultaResponseDto>
                 {
-                    HttpStatus = StatusCodes.Status200OK,
-                    Code       = "CONSULTA_ABIERTA",
-                    Message    = "Consulta abierta correctamente.",
-                    Data       = new ConsultaResponseDto { ConsultaId = consultaId }
+                    HttpStatus = httpStatus,
+                    Code       = codigo,
+                    Message    = mensaje
                 };
             }
 
