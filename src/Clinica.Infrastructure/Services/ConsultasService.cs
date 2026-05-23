@@ -231,15 +231,15 @@ public sealed class ConsultasService : IConsultasService
             {
                 dto.SignosVitales = new SignosVitalesDto
                 {
-                    PresionSistolica       = reader.IsDBNull(reader.GetOrdinal("PresionSistolica"))       ? null : reader.GetDecimal(reader.GetOrdinal("PresionSistolica")),
-                    PresionDiastolica      = reader.IsDBNull(reader.GetOrdinal("PresionDiastolica"))      ? null : reader.GetDecimal(reader.GetOrdinal("PresionDiastolica")),
-                    FrecuenciaCardiaca     = reader.IsDBNull(reader.GetOrdinal("FrecuenciaCardiaca"))     ? null : reader.GetDecimal(reader.GetOrdinal("FrecuenciaCardiaca")),
-                    FrecuenciaRespiratoria = reader.IsDBNull(reader.GetOrdinal("FrecuenciaRespiratoria")) ? null : reader.GetDecimal(reader.GetOrdinal("FrecuenciaRespiratoria")),
-                    Temperatura            = reader.IsDBNull(reader.GetOrdinal("Temperatura"))            ? null : reader.GetDecimal(reader.GetOrdinal("Temperatura")),
-                    SaturacionOxigeno      = reader.IsDBNull(reader.GetOrdinal("SaturacionOxigeno"))      ? null : reader.GetDecimal(reader.GetOrdinal("SaturacionOxigeno")),
-                    PesoKg                 = reader.IsDBNull(reader.GetOrdinal("PesoKg"))                 ? null : reader.GetDecimal(reader.GetOrdinal("PesoKg")),
-                    TallaCm                = reader.IsDBNull(reader.GetOrdinal("TallaCm"))                ? null : reader.GetDecimal(reader.GetOrdinal("TallaCm")),
-                    Imc                    = reader.HasColumn("IMC") && !reader.IsDBNull(reader.GetOrdinal("IMC")) ? reader.GetDecimal(reader.GetOrdinal("IMC")) : null,
+                    PresionSistolica       = reader.IsDBNull(reader.GetOrdinal("PresionSistolica"))       ? null : Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("PresionSistolica"))),
+                    PresionDiastolica      = reader.IsDBNull(reader.GetOrdinal("PresionDiastolica"))      ? null : Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("PresionDiastolica"))),
+                    FrecuenciaCardiaca     = reader.IsDBNull(reader.GetOrdinal("FrecuenciaCardiaca"))     ? null : Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("FrecuenciaCardiaca"))),
+                    FrecuenciaRespiratoria = reader.IsDBNull(reader.GetOrdinal("FrecuenciaRespiratoria")) ? null : Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("FrecuenciaRespiratoria"))),
+                    Temperatura            = reader.IsDBNull(reader.GetOrdinal("Temperatura"))            ? null : Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("Temperatura"))),
+                    SaturacionOxigeno      = reader.IsDBNull(reader.GetOrdinal("SaturacionOxigeno"))      ? null : Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("SaturacionOxigeno"))),
+                    PesoKg                 = reader.IsDBNull(reader.GetOrdinal("PesoKg"))                 ? null : Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("PesoKg"))),
+                    TallaCm                = reader.IsDBNull(reader.GetOrdinal("TallaCm"))                ? null : Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("TallaCm"))),
+                    Imc                    = reader.HasColumn("IMC") && !reader.IsDBNull(reader.GetOrdinal("IMC")) ? Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("IMC"))) : null,
                 };
             }
 
