@@ -1,3 +1,4 @@
+using System.Data;
 using Clinica.Application.Contracts;
 using Clinica.Application.Models;
 using Clinica.Infrastructure.Database;
@@ -25,11 +26,8 @@ public sealed class DatabaseHealthService : IDatabaseHealthService
             await connection.OpenAsync(cancellationToken);
 
             await using var command = connection.CreateCommand();
-            command.CommandText = @"
-                SELECT
-                    DB_NAME() AS DatabaseName,
-                    CONVERT(datetime2, SYSUTCDATETIME()) AS ServerUtcNow,
-                    CAST(SERVERPROPERTY('ServerName') AS nvarchar(256)) AS DataSource;";
+            command.CommandType = CommandType.StoredProcedure;
+            command.CommandText = "dbo.sp_DatabaseHealth_Check";
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
 

@@ -70,24 +70,7 @@ public sealed class CitasRepository
         return await _executor.QuerySingleAsync(
             "dbo.sp_Cita_Obtener",
             [new SqlParameter("@CitaId", citaId)],
-            reader => new CitaResponseDto
-            {
-                CitaId           = reader.GetInt64OrDefault("CitaId"),
-                PacienteId       = reader.GetInt32OrDefault("PacienteId"),
-                NumeroExpediente = string.Empty,
-                SedeId           = reader.GetInt32OrDefault("SedeId"),
-                NombreSede       = reader.GetNullableString("NombreSede") ?? string.Empty,
-                ServicioId       = reader.GetInt32OrDefault("ServicioId"),
-                NombreServicio   = reader.GetNullableString("NombreServicio") ?? string.Empty,
-                MedicoId         = reader.GetNullableInt32("MedicoId"),
-                NombreMedico     = null,
-                FechaInicio      = reader.GetDateTimeOrDefault("FechaInicio"),
-                FechaFin         = reader.GetDateTimeOrDefault("FechaFin"),
-                Estado           = reader.GetNullableString("Estado") ?? string.Empty,
-                Modalidad        = reader.GetNullableString("Modalidad") ?? string.Empty,
-                MotivoConsulta   = reader.GetNullableString("MotivoConsulta"),
-                FechaCreacion    = reader.GetDateTimeOrDefault("FechaCreacion")
-            });
+            MapCita);
     }
 
     public async Task<List<CitaResponseDto>> ListarAsync(ListarCitasRequestDto filtros)
@@ -103,23 +86,32 @@ public sealed class CitasRepository
                 new SqlParameter("@FechaDesde",  (object?)filtros.FechaDesde ?? DBNull.Value),
                 new SqlParameter("@FechaHasta",  (object?)filtros.FechaHasta ?? DBNull.Value)
             ],
-            reader => new CitaResponseDto
-            {
-                CitaId           = reader.GetInt64OrDefault("CitaId"),
-                PacienteId       = reader.GetInt32OrDefault("PacienteId"),
-                NumeroExpediente = string.Empty,
-                SedeId           = reader.GetInt32OrDefault("SedeId"),
-                NombreSede     = reader.GetNullableString("NombreSede") ?? string.Empty,
-                ServicioId       = reader.GetInt32OrDefault("ServicioId"),
-                NombreServicio = reader.GetNullableString("NombreServicio") ?? string.Empty,
-                MedicoId         = reader.GetNullableInt32("MedicoId"),
-                NombreMedico = reader.GetNullableString("NombreMedico"),
-                FechaInicio      = reader.GetDateTimeOrDefault("FechaInicio"),
-                FechaFin         = reader.GetDateTimeOrDefault("FechaFin"),
-                Estado           = reader.GetNullableString("Estado") ?? string.Empty,
-                Modalidad        = reader.GetNullableString("Modalidad") ?? string.Empty,
-                MotivoConsulta   = reader.GetNullableString("MotivoConsulta"),
-                FechaCreacion    = reader.GetDateTimeOrDefault("FechaCreacion")
-            });
+            MapCita);
     }
+
+    private static CitaResponseDto MapCita(SqlDataReader reader) => new()
+    {
+        CitaId = reader.GetInt64OrDefault("CitaId"),
+        PacienteId = reader.GetInt32OrDefault("PacienteId"),
+        PacienteNombre = reader.GetNullableString("PacienteNombre") ?? string.Empty,
+        NumeroExpediente = reader.GetNullableString("NumeroExpediente") ?? string.Empty,
+        DocumentoPaciente = reader.GetNullableString("DocumentoPaciente") ?? string.Empty,
+        SedeId = reader.GetInt32OrDefault("SedeId"),
+        NombreSede = reader.GetNullableString("NombreSede") ?? reader.GetNullableString("SedeNombre") ?? string.Empty,
+        ServicioId = reader.GetInt32OrDefault("ServicioId"),
+        NombreServicio = reader.GetNullableString("NombreServicio") ?? reader.GetNullableString("ServicioNombre") ?? string.Empty,
+        MedicoId = reader.GetNullableInt32("MedicoId"),
+        NombreMedico = reader.GetNullableString("NombreMedico") ?? reader.GetNullableString("MedicoNombre"),
+        TipoConsultaId = reader.GetNullableInt32("TipoConsultaId"),
+        TipoConsultaNombre = reader.GetNullableString("TipoConsultaNombre"),
+        ConsultorioId = reader.GetNullableInt32("ConsultorioId"),
+        ConsultorioNombre = reader.GetNullableString("ConsultorioNombre"),
+        FechaInicio = reader.GetDateTimeOrDefault("FechaInicio"),
+        FechaFin = reader.GetDateTimeOrDefault("FechaFin"),
+        Estado = reader.GetNullableString("Estado") ?? string.Empty,
+        Modalidad = reader.GetNullableString("Modalidad") ?? string.Empty,
+        MotivoConsulta = reader.GetNullableString("MotivoConsulta"),
+        FechaCreacion = reader.GetDateTimeOrDefault("FechaCreacion")
+    };
+
 }

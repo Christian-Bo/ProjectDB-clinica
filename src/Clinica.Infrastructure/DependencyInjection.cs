@@ -64,6 +64,12 @@ public static class DependencyInjection
         services.AddScoped<IOrdenesService, OrdenesService>();
         services.AddScoped<IRecetasService, RecetasService>();
 
+        // ── Flujo BD2: ventanillas, secretarias, cola médica y configuración ─────
+        services.AddScoped<IOperativoCatalogosService, OperativoCatalogosService>();
+        services.AddScoped<ISecretariaService, SecretariaService>();
+        services.AddScoped<IMedicoColaService, MedicoColaService>();
+        services.AddScoped<INotificacionConfiguracionService, NotificacionConfiguracionService>();
+
         return services;
     }
 }

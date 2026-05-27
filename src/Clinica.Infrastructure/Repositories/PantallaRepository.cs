@@ -11,66 +11,63 @@ public sealed class PantallaRepository(SqlExecutor db)
 
     public async Task<PantallaColaDto> ObtenerColaAsync(int sedeId, IReadOnlyCollection<int> servicioIds, CancellationToken ct)
     {
-        var normalizedIds = servicioIds
+        var normalizedIds = (servicioIds ?? Array.Empty<int>())
             .Where(id => id > 0)
             .Distinct()
             .OrderBy(id => id)
             .ToArray();
 
-        var servicioIdsCsv = string.Join(',', normalizedIds);
+        var servicioIdsCsv = normalizedIds.Length == 0 ? null : string.Join(',', normalizedIds);
         var servicioId = normalizedIds.Length == 1 ? normalizedIds[0] : (int?)null;
 
         var parameters = new[]
         {
-            Sql.Int("@SedeId",       sedeId),
-            Sql.Int("@ServicioId",   servicioId),
+            Sql.Int("@SedeId", sedeId > 0 ? sedeId : null),
+            Sql.Int("@ServicioId", servicioId),
             Sql.NVarChar("@ServicioIds", servicioIdsCsv, 4000),
-            Sql.Int("@TopProximos",  5),
+            Sql.Int("@TopProximos", 8),
         };
 
         var ds = await db.ExecuteSpAsync("dbo.sp_ObtenerPantallaCola", parameters, ct);
 
         ColaTicketPreviewDto? ultimoLlamado = null;
         var ticketsLlamados = new List<ColaTicketPreviewDto>();
+        var proximos = new List<ColaTicketPreviewDto>();
         var ultimosLlamados = new List<ColaTicketPreviewDto>();
         string sedeNombre = string.Empty;
         string serviciosNombre = string.Empty;
 
-        // Table[0]: último ticket llamado / foco principal.
-        if (ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+        if (ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0 && ds.Tables[0].HasColumn("TicketId"))
         {
             ultimoLlamado = MapPreview(ds.Tables[0].Rows[0]);
             sedeNombre = ultimoLlamado.SedeNombre ?? sedeNombre;
             serviciosNombre = ultimoLlamado.ServicioNombre ?? serviciosNombre;
         }
 
-        // Table[1]: tickets actualmente llamados/en atención para la pantalla pública.
-        if (ds.Tables.Count > 1)
+        if (ds.Tables.Count > 1 && ds.Tables[1].HasColumn("TicketId"))
         {
             foreach (DataRow row in ds.Tables[1].Rows)
                 ticketsLlamados.Add(MapPreview(row));
         }
 
-        // Table[2]: últimos llamados históricos. En SPs antiguos, Table[2] podía ser metadata.
         if (ds.Tables.Count > 2 && ds.Tables[2].HasColumn("TicketId"))
         {
             foreach (DataRow row in ds.Tables[2].Rows)
+                proximos.Add(MapPreview(row));
+        }
+
+        if (ds.Tables.Count > 3 && ds.Tables[3].HasColumn("TicketId"))
+        {
+            foreach (DataRow row in ds.Tables[3].Rows)
                 ultimosLlamados.Add(MapPreview(row));
         }
 
-        // Table[3]: metadatos de sede y servicios.
-        if (ds.Tables.Count > 3 && ds.Tables[3].Rows.Count > 0)
+        var metaIndex = FindMetadataTable(ds);
+        if (metaIndex >= 0 && ds.Tables[metaIndex].Rows.Count > 0)
         {
-            var meta = ds.Tables[3].Rows[0];
-            sedeNombre = meta.StrNull("SedeNombre") ?? sedeNombre;
-            serviciosNombre = meta.StrNull("ServicioNombre") ?? meta.StrNull("ServiciosNombre") ?? serviciosNombre;
-        }
-        // Compatibilidad con SP anterior: Table[2] podía ser metadatos.
-        else if (ds.Tables.Count > 2 && ds.Tables[2].Rows.Count > 0 && ds.Tables[2].HasColumn("SedeNombre") && !ds.Tables[2].HasColumn("TicketId"))
-        {
-            var meta = ds.Tables[2].Rows[0];
-            sedeNombre = meta.StrNull("SedeNombre") ?? sedeNombre;
-            serviciosNombre = meta.StrNull("ServicioNombre") ?? serviciosNombre;
+            var meta = ds.Tables[metaIndex].Rows[0];
+            sedeNombre = meta.Table.HasColumn("SedeNombre") ? meta.StrNull("SedeNombre") ?? sedeNombre : sedeNombre;
+            serviciosNombre = meta.Table.HasColumn("ServiciosNombre") ? meta.StrNull("ServiciosNombre") ?? serviciosNombre : serviciosNombre;
         }
 
         if (ticketsLlamados.Count == 0 && ultimoLlamado is not null)
@@ -85,7 +82,7 @@ public sealed class PantallaRepository(SqlExecutor db)
             ServicioNombre = servicioId.HasValue ? serviciosNombre : string.Empty,
             ServiciosNombre = serviciosNombre,
             Actual = ultimoLlamado,
-            Proximos = ultimosLlamados,
+            Proximos = proximos,
             UltimoLlamado = ultimoLlamado,
             TicketsLlamados = ticketsLlamados,
             UltimosLlamados = ultimosLlamados,
@@ -93,19 +90,33 @@ public sealed class PantallaRepository(SqlExecutor db)
         };
     }
 
+    private static int FindMetadataTable(DataSet ds)
+    {
+        for (var i = 0; i < ds.Tables.Count; i++)
+        {
+            var table = ds.Tables[i];
+            if (table.HasColumn("SedeNombre") && !table.HasColumn("TicketId"))
+                return i;
+        }
+
+        return -1;
+    }
+
     private static ColaTicketPreviewDto MapPreview(DataRow row)
     {
         var table = row.Table;
         var consultorioNombre = table.HasColumn("ConsultorioNombre") ? row.StrNull("ConsultorioNombre") : null;
         var servicioNombre = table.HasColumn("ServicioNombre") ? row.StrNull("ServicioNombre") : null;
+        var destinoTipo = table.HasColumn("DestinoTipo") ? row.StrNull("DestinoTipo") : null;
+        var destinoActual = table.HasColumn("DestinoActual") ? row.StrNull("DestinoActual") : null;
         var ventanillaNombre = table.HasColumn("VentanillaNombre")
             ? row.StrNull("VentanillaNombre")
-            : consultorioNombre ?? servicioNombre;
+            : destinoActual ?? consultorioNombre ?? servicioNombre;
 
         return new ColaTicketPreviewDto
         {
-            TicketId = row.Int64("TicketId"),
-            NumeroTicket = row.Str("NumeroTicket"),
+            TicketId = table.HasColumn("TicketId") ? row.Int64("TicketId") : 0,
+            NumeroTicket = table.HasColumn("NumeroTicket") ? row.Str("NumeroTicket") : string.Empty,
             PacienteNombre = table.HasColumn("PacienteNombre") ? row.StrNull("PacienteNombre") ?? string.Empty : string.Empty,
             Prioridad = table.HasColumn("Prioridad") ? row.StrNull("Prioridad") ?? "NORMAL" : "NORMAL",
             Estado = table.HasColumn("Estado") ? row.StrNull("Estado") ?? string.Empty : string.Empty,
@@ -117,6 +128,8 @@ public sealed class PantallaRepository(SqlExecutor db)
             ConsultorioId = table.HasColumn("ConsultorioId") ? row.Int32Null("ConsultorioId") : null,
             ConsultorioNombre = consultorioNombre,
             VentanillaNombre = ventanillaNombre,
+            DestinoTipo = destinoTipo,
+            DestinoActual = destinoActual,
         };
     }
 }

@@ -7,10 +7,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Clinica.API.Controllers;
 
-/// <summary>
-/// Módulo 3 — Pantalla pública.
-/// Expone la cola actual mediante polling REST y opcionalmente Server-Sent Events (SSE).
-/// </summary>
 [ApiController]
 [Route("api/pantalla")]
 [Produces("application/json")]
@@ -21,64 +17,58 @@ public sealed class PantallaController(IPantallaService service) : ControllerBas
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    // ─── GET /api/pantalla/cola ──────────────────────────────────────────────
-
     [HttpGet("cola")]
     public async Task<IActionResult> ObtenerCola(
-        [FromQuery] int sedeId,
+        [FromQuery] int? sedeId,
         [FromQuery] int? servicioId,
         [FromQuery] string? servicioIds,
         CancellationToken ct)
     {
+        var resolvedSedeId = sedeId.GetValueOrDefault();
         var ids = ResolverServicioIds(servicioId, servicioIds);
 
-        if (sedeId <= 0 || ids.Count == 0)
-            return BadRequest(ApiResponse<object>.Fail("sedeId y al menos un servicio son requeridos.", "PARAM_INVALIDO"));
+        if (resolvedSedeId <= 0)
+        {
+            return Ok(ApiResponse<PantallaColaDto>.Success(PantallaColaDto.Empty(), "Pantalla sin sede seleccionada."));
+        }
 
-        var cola = await service.ObtenerColaAsync(sedeId, ids, ct);
+        var cola = await service.ObtenerColaAsync(resolvedSedeId, ids, ct);
         return Ok(ApiResponse<PantallaColaDto>.Success(cola));
     }
 
-    // ─── GET /api/pantalla/cola/stream (Server-Sent Events) ─────────────────
-    // El frontend lo usa opcionalmente; si no está disponible cae a polling.
-
     [HttpGet("cola/stream")]
     public async Task StreamCola(
-        [FromQuery] int sedeId,
+        [FromQuery] int? sedeId,
         [FromQuery] int? servicioId,
         [FromQuery] string? servicioIds,
         [FromQuery] int intervalSeconds = 4,
         CancellationToken ct = default)
     {
-        var ids = ResolverServicioIds(servicioId, servicioIds);
-
-        if (sedeId <= 0 || ids.Count == 0)
-        {
-            Response.StatusCode = 400;
-            return;
-        }
-
         Response.Headers.Append("Content-Type", "text/event-stream");
         Response.Headers.Append("Cache-Control", "no-cache");
         Response.Headers.Append("X-Accel-Buffering", "no");
 
-        var interval = TimeSpan.FromSeconds(Math.Clamp(intervalSeconds, 2, 30));
+        var resolvedSedeId = sedeId.GetValueOrDefault();
+        var ids = ResolverServicioIds(servicioId, servicioIds);
+        var interval = TimeSpan.FromSeconds(Math.Clamp(intervalSeconds, 3, 30));
 
         try
         {
             while (!ct.IsCancellationRequested)
             {
-                var cola = await service.ObtenerColaAsync(sedeId, ids, ct);
-                var payload = JsonSerializer.Serialize(
-                    ApiResponse<PantallaColaDto>.Success(cola), JsonOpts);
+                var cola = resolvedSedeId <= 0
+                    ? PantallaColaDto.Empty()
+                    : await service.ObtenerColaAsync(resolvedSedeId, ids, ct);
 
-                var msg = $"event: cola\ndata: {payload}\n\n";
-                await Response.WriteAsync(msg, Encoding.UTF8, ct);
+                var payload = JsonSerializer.Serialize(ApiResponse<PantallaColaDto>.Success(cola), JsonOpts);
+                await Response.WriteAsync($"event: cola\ndata: {payload}\n\n", Encoding.UTF8, ct);
                 await Response.Body.FlushAsync(ct);
                 await Task.Delay(interval, ct);
             }
         }
-        catch (OperationCanceledException) { /* cliente desconectado — normal */ }
+        catch (OperationCanceledException)
+        {
+        }
     }
 
     private static List<int> ResolverServicioIds(int? servicioId, string? servicioIds)
@@ -90,13 +80,17 @@ public sealed class PantallaController(IPantallaService service) : ControllerBas
 
         if (!string.IsNullOrWhiteSpace(servicioIds))
         {
-            foreach (var raw in servicioIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            var rawValues = servicioIds
+                .Replace(";", ",", StringComparison.Ordinal)
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            foreach (var raw in rawValues)
             {
                 if (int.TryParse(raw, out var parsed) && parsed > 0)
                     ids.Add(parsed);
             }
         }
 
-        return ids.Distinct().ToList();
+        return ids.Distinct().OrderBy(id => id).ToList();
     }
 }

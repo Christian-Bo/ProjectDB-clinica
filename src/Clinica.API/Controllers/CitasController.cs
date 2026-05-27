@@ -24,10 +24,11 @@ public sealed class CitasController : ControllerBase
         var key = idempotencyKey ?? Guid.NewGuid();
         var cita = await _service.ReservarAsync(dto, key, 1);
         return StatusCode(201,
-            ApiResponse<CitaResponseDto>.Success(cita!, "Cita reservada correctamente."));
+            ApiResponse<CitaResponseDto>.Success(cita!, "Solicitud de cita registrada. Queda pendiente de confirmación por secretaría."));
     }
 
     // POST /api/reservar/cita/{citaId}/confirmar
+    // Compatibilidad: se mantiene la ruta, pero el frontend de paciente ya no la utiliza.
     [HttpPost("api/reservar/cita/{citaId:long}/confirmar")]
     public async Task<IActionResult> Confirmar(
         long citaId,

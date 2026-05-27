@@ -55,6 +55,8 @@ public sealed class CuentaDto
     public long CitaId { get; init; }
     public int PacienteId { get; init; }
     public string PacienteNombre { get; init; } = string.Empty;
+    public int? TipoConsultaId { get; init; }
+    public string? TipoConsultaNombre { get; init; }
     public decimal SubtotalConsulta { get; init; }
     public decimal SubtotalMedicamentos { get; init; }
     public decimal SubtotalProcedimientos { get; init; }
@@ -64,6 +66,31 @@ public sealed class CuentaDto
     public string Estado { get; init; } = string.Empty;
     public DateTime FechaEmision { get; init; }
     public DateTime? FechaPago { get; init; }
+    public string? Observaciones { get; init; }
+}
+
+public sealed class CuentaListarFiltrosDto
+{
+    public int? PacienteId { get; set; }
+    public string? Estado { get; set; }
+}
+
+public sealed class CuentaDetalleLineaDto
+{
+    public long CuentaDetalleId { get; init; }
+    public long CuentaId { get; init; }
+    public string TipoConcepto { get; init; } = string.Empty;
+    public string Descripcion { get; init; } = string.Empty;
+    public decimal Cantidad { get; init; }
+    public decimal PrecioUnitario { get; init; }
+    public decimal Subtotal { get; init; }
+}
+
+public sealed class CuentaDetalleDto
+{
+    public CuentaDto Cuenta { get; init; } = new();
+    public IReadOnlyList<CuentaDetalleLineaDto> Detalle { get; init; } = Array.Empty<CuentaDetalleLineaDto>();
+    public IReadOnlyList<PagoDto> Pagos { get; init; } = Array.Empty<PagoDto>();
 }
 
 // ---------------------------------------------------------------------------
@@ -103,7 +130,18 @@ public sealed class PagoDto
     public long PagoId { get; init; }
     public long CuentaId { get; init; }
     public int MetodoPagoId { get; init; }
+    public string? MetodoPagoNombre { get; init; }
     public decimal Monto { get; init; }
     public string? Referencia { get; init; }
     public DateTime FechaPago { get; init; }
+    public bool Anulado { get; init; }
+}
+
+public sealed class MetodoPagoDto
+{
+    public int MetodoPagoId { get; init; }
+    public string Nombre { get; init; } = string.Empty;
+    public bool RequiereReferencia { get; init; }
+    public bool RequiereComprobante { get; init; }
+    public bool Activo { get; init; }
 }

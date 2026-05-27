@@ -15,6 +15,8 @@ public sealed record ColaTicketPreviewDto
     public int?    ConsultorioId     { get; init; }
     public string? ConsultorioNombre { get; init; }
     public string? VentanillaNombre  { get; init; }
+    public string? DestinoTipo       { get; init; }
+    public string? DestinoActual     { get; init; }
 }
 
 public sealed record PantallaColaDto
@@ -26,14 +28,21 @@ public sealed record PantallaColaDto
     public string ServicioNombre  { get; init; } = string.Empty;
     public string ServiciosNombre { get; init; } = string.Empty;
 
-    // Compatibilidad con vistas anteriores.
     public ColaTicketPreviewDto? Actual { get; init; }
     public List<ColaTicketPreviewDto> Proximos { get; init; } = [];
 
-    // Pantalla pública mejorada.
     public ColaTicketPreviewDto? UltimoLlamado { get; init; }
     public List<ColaTicketPreviewDto> TicketsLlamados { get; init; } = [];
     public List<ColaTicketPreviewDto> UltimosLlamados { get; init; } = [];
 
     public DateTime ConsultadoEnUtc { get; init; } = DateTime.UtcNow;
+
+    public static PantallaColaDto Empty() => new()
+    {
+        ConsultadoEnUtc = DateTime.UtcNow,
+        ServicioIds = [],
+        Proximos = [],
+        TicketsLlamados = [],
+        UltimosLlamados = []
+    };
 }

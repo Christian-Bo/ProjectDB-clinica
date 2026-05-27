@@ -155,6 +155,7 @@ public sealed class OrdenesCompraService : IOrdenesCompraService
             {
                 OrdenCompraId    = reader.GetInt32OrDefault("OrdenCompraId"),
                 ProveedorId      = reader.GetInt32OrDefault("ProveedorId"),
+                ProveedorNombre  = reader.GetNullableString("ProveedorNombre") ?? string.Empty,
                 NumeroOrden      = reader.GetNullableString("NumeroOrden") ?? string.Empty,
                 Estado           = reader.GetNullableString("Estado") ?? string.Empty,
                 FechaEmision     = reader.GetDateTimeOrDefault("FechaEmision"),
@@ -179,8 +180,8 @@ public sealed class OrdenesCompraService : IOrdenesCompraService
 
     // =========================================================================
     // sp_OrdenCompra_Obtener devuelve 2 result sets:
-    //   1ro: SELECT * FROM dbo.OrdenesCompra WHERE OrdenCompraId = @OrdenCompraId
-    //   2do: SELECT * FROM dbo.OrdenesCompraDetalle WHERE OrdenCompraId = @OrdenCompraId
+    //   1ro: encabezado de orden con proveedor y usuarios asociados
+    //   2do: detalle de compra con medicamento asociado
     // =========================================================================
     private async Task<OrdenCompraDto?> CargarOrdenAsync(SqlConnection conn, int id, CancellationToken ct)
     {
@@ -198,6 +199,7 @@ public sealed class OrdenesCompraService : IOrdenesCompraService
             {
                 OrdenCompraId    = reader.GetInt32OrDefault("OrdenCompraId"),
                 ProveedorId      = reader.GetInt32OrDefault("ProveedorId"),
+                ProveedorNombre  = reader.GetNullableString("ProveedorNombre") ?? string.Empty,
                 NumeroOrden      = reader.GetNullableString("NumeroOrden") ?? string.Empty,
                 Estado           = reader.GetNullableString("Estado") ?? string.Empty,
                 FechaEmision     = reader.GetDateTimeOrDefault("FechaEmision"),
@@ -220,6 +222,7 @@ public sealed class OrdenesCompraService : IOrdenesCompraService
                     OrdenCompraDetalleId = reader.GetInt64OrDefault("OrdenCompraDetalleId"),
                     OrdenCompraId        = reader.GetInt32OrDefault("OrdenCompraId"),
                     MedicamentoId        = reader.GetInt32OrDefault("MedicamentoId"),
+                    MedicamentoNombre    = reader.GetNullableString("MedicamentoNombre") ?? string.Empty,
                     CantidadSolicitada   = GetDecimal(reader, "CantidadSolicitada"),
                     CantidadRecibida     = GetDecimal(reader, "CantidadRecibida"),
                     PrecioUnitario       = GetDecimal(reader, "PrecioUnitario"),

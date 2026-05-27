@@ -216,34 +216,7 @@ public sealed class TicketQueueService : ITicketQueueService
         await using var connection = _databaseConnection.CreateConnection();
         await connection.OpenAsync(cancellationToken);
 
-        await using var command = connection.CreateCommand();
-        command.CommandType = CommandType.Text;
-        command.CommandTimeout = 60;
-        command.CommandText = @"
-SELECT
-    SUM(CASE WHEN t.Estado = N'ESPERA' THEN 1 ELSE 0 END) AS TicketsEnEspera,
-    SUM(CASE WHEN t.Estado = N'LLAMADO' THEN 1 ELSE 0 END) AS TicketsLlamados,
-    SUM(CASE WHEN t.Estado = N'EN_ATENCION' THEN 1 ELSE 0 END) AS TicketsEnAtencion,
-    SUM(CASE WHEN t.Estado = N'FINALIZADO' THEN 1 ELSE 0 END) AS TicketsFinalizados,
-    SUM(CASE WHEN t.Estado = N'NO_SHOW' THEN 1 ELSE 0 END) AS TicketsNoShow,
-    SUM(CASE WHEN t.Prioridad = N'ESPECIAL' THEN 1 ELSE 0 END) AS TicketsEspecialesHoy
-FROM dbo.Tickets t
-WHERE CAST(t.FechaGeneracion AS date) = CAST(SYSUTCDATETIME() AS date)
-  AND (@SedeId IS NULL OR t.SedeId = @SedeId)
-  AND (@ServicioId IS NULL OR t.ServicioId = @ServicioId);
-
-SELECT TOP (1)
-    t.NumeroTicket,
-    s.Nombre AS SedeNombre,
-    sv.Nombre AS ServicioNombre
-FROM dbo.Tickets t
-INNER JOIN dbo.Sedes s ON s.SedeId = t.SedeId
-INNER JOIN dbo.Servicios sv ON sv.ServicioId = t.ServicioId
-WHERE CAST(t.FechaGeneracion AS date) = CAST(SYSUTCDATETIME() AS date)
-  AND (@SedeId IS NULL OR t.SedeId = @SedeId)
-  AND (@ServicioId IS NULL OR t.ServicioId = @ServicioId)
-  AND t.Estado IN (N'LLAMADO', N'EN_ATENCION')
-ORDER BY ISNULL(t.FechaLlamado, t.FechaInicioAtencion) DESC, t.TicketId DESC;";
+        await using var command = CreateStoredProcedureCommand(connection, "dbo.sp_Recepcion_ResumenOperativo");
         AddParameter(command, "@SedeId", sedeId);
         AddParameter(command, "@ServicioId", servicioId);
 
@@ -772,99 +745,19 @@ ORDER BY ISNULL(t.FechaLlamado, t.FechaInicioAtencion) DESC, t.TicketId DESC;";
             return Array.Empty<TicketDetailDto>();
         }
 
-        await using var command = connection.CreateCommand();
-        command.CommandType = CommandType.Text;
-        command.CommandTimeout = 60;
-
-        var parameterNames = new List<string>();
-        var index = 0;
+        var map = new Dictionary<long, TicketDetailDto>();
         foreach (var ticketId in ticketIds.Distinct())
         {
-            var parameterName = $"@Id{index++}";
-            parameterNames.Add(parameterName);
-            command.Parameters.Add(new SqlParameter(parameterName, SqlDbType.BigInt) { Value = ticketId });
-        }
+            await using var command = CreateStoredProcedureCommand(connection, "dbo.sp_Ticket_Obtener");
+            AddParameter(command, "@TicketId", ticketId);
+            AddParameter(command, "@NumeroTicket", null);
 
-        command.CommandText = $@"
-SELECT
-    t.TicketId,
-    t.NumeroTicket,
-    t.Estado,
-    t.Prioridad,
-    t.EsEspecial,
-    t.MotivoEspecial,
-    t.CitaId,
-    c.Estado AS CitaEstado,
-    t.PacienteId,
-    COALESCE(NULLIF(LTRIM(RTRIM(CONCAT(ISNULL(up.Nombres, N''), N' ', ISNULL(up.Apellidos, N'')))), N''), CONCAT(N'Paciente #', t.PacienteId)) AS PacienteNombre,
-    p.NumeroExpediente,
-    CONCAT(p.TipoDocumento, N': ', p.NumeroDocumento) AS PacienteDocumento,
-    t.SedeId,
-    s.Nombre AS SedeNombre,
-    t.ServicioId,
-    sv.Nombre AS ServicioNombre,
-    esp.Nombre AS EspecialidadNombre,
-    t.MedicoId,
-    CASE WHEN um.UsuarioId IS NULL THEN NULL ELSE LTRIM(RTRIM(CONCAT(ISNULL(um.Nombres, N''), N' ', ISNULL(um.Apellidos, N'')))) END AS MedicoNombre,
-    t.ConsultorioId,
-    ct.Nombre AS ConsultorioNombre,
-    t.AutorizadoPor AS AutorizadoPorId,
-    CASE WHEN ua.UsuarioId IS NULL THEN NULL ELSE LTRIM(RTRIM(CONCAT(ISNULL(ua.Nombres, N''), N' ', ISNULL(ua.Apellidos, N'')))) END AS AutorizadoPorNombre,
-    t.FechaGeneracion,
-    t.FechaLlamado,
-    t.FechaInicioAtencion,
-    t.FechaFinAtencion,
-    t.ContadorLlamados
-FROM dbo.Tickets t
-INNER JOIN dbo.Pacientes p ON p.PacienteId = t.PacienteId
-LEFT JOIN dbo.Usuarios up ON up.UsuarioId = p.UsuarioId
-INNER JOIN dbo.Sedes s ON s.SedeId = t.SedeId
-INNER JOIN dbo.Servicios sv ON sv.ServicioId = t.ServicioId
-LEFT JOIN dbo.Especialidades esp ON esp.EspecialidadId = sv.EspecialidadId
-LEFT JOIN dbo.Medicos m ON m.MedicoId = t.MedicoId
-LEFT JOIN dbo.Usuarios um ON um.UsuarioId = m.UsuarioId
-LEFT JOIN dbo.Consultorios ct ON ct.ConsultorioId = t.ConsultorioId
-LEFT JOIN dbo.Usuarios ua ON ua.UsuarioId = t.AutorizadoPor
-LEFT JOIN dbo.Citas c ON c.CitaId = t.CitaId
-WHERE t.TicketId IN ({string.Join(", ", parameterNames)});";
-
-        var map = new Dictionary<long, TicketDetailDto>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            var dto = new TicketDetailDto
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (await reader.ReadAsync(cancellationToken))
             {
-                TicketId = reader.GetInt64OrDefault("TicketId"),
-                NumeroTicket = reader.GetNullableString("NumeroTicket") ?? string.Empty,
-                Estado = reader.GetNullableString("Estado") ?? string.Empty,
-                Prioridad = reader.GetNullableString("Prioridad") ?? string.Empty,
-                EsEspecial = reader.GetBooleanOrDefault("EsEspecial"),
-                MotivoEspecial = reader.GetNullableString("MotivoEspecial"),
-                CitaId = reader.GetNullableInt64("CitaId"),
-                CitaEstado = reader.GetNullableString("CitaEstado"),
-                PacienteId = reader.GetInt32OrDefault("PacienteId"),
-                PacienteNombre = reader.GetNullableString("PacienteNombre") ?? string.Empty,
-                NumeroExpediente = reader.GetNullableString("NumeroExpediente"),
-                PacienteDocumento = reader.GetNullableString("PacienteDocumento"),
-                SedeId = reader.GetInt32OrDefault("SedeId"),
-                SedeNombre = reader.GetNullableString("SedeNombre") ?? string.Empty,
-                ServicioId = reader.GetInt32OrDefault("ServicioId"),
-                ServicioNombre = reader.GetNullableString("ServicioNombre") ?? string.Empty,
-                EspecialidadNombre = reader.GetNullableString("EspecialidadNombre"),
-                MedicoId = reader.GetNullableInt32("MedicoId"),
-                MedicoNombre = reader.GetNullableString("MedicoNombre"),
-                ConsultorioId = reader.GetNullableInt32("ConsultorioId"),
-                ConsultorioNombre = reader.GetNullableString("ConsultorioNombre"),
-                AutorizadoPorId = reader.GetNullableInt32("AutorizadoPorId"),
-                AutorizadoPorNombre = reader.GetNullableString("AutorizadoPorNombre"),
-                FechaGeneracion = reader.GetDateTimeOrDefault("FechaGeneracion"),
-                FechaLlamado = reader.GetNullableDateTime("FechaLlamado"),
-                FechaInicioAtencion = reader.GetNullableDateTime("FechaInicioAtencion"),
-                FechaFinAtencion = reader.GetNullableDateTime("FechaFinAtencion"),
-                ContadorLlamados = reader.GetInt32OrDefault("ContadorLlamados")
-            };
-
-            map[dto.TicketId] = dto;
+                var dto = MapTicketDetail(reader);
+                map[dto.TicketId] = dto;
+            }
         }
 
         return ticketIds
@@ -874,6 +767,38 @@ WHERE t.TicketId IN ({string.Join(", ", parameterNames)});";
             .ToList();
     }
 
+    private static TicketDetailDto MapTicketDetail(SqlDataReader reader) => new()
+    {
+        TicketId = reader.GetInt64OrDefault("TicketId"),
+        NumeroTicket = reader.GetNullableString("NumeroTicket") ?? string.Empty,
+        Estado = reader.GetNullableString("Estado") ?? string.Empty,
+        Prioridad = reader.GetNullableString("Prioridad") ?? string.Empty,
+        EsEspecial = reader.GetBooleanOrDefault("EsEspecial"),
+        MotivoEspecial = reader.GetNullableString("MotivoEspecial"),
+        CitaId = reader.GetNullableInt64("CitaId"),
+        CitaEstado = reader.GetNullableString("CitaEstado"),
+        PacienteId = reader.GetInt32OrDefault("PacienteId"),
+        PacienteNombre = reader.GetNullableString("PacienteNombre") ?? string.Empty,
+        NumeroExpediente = reader.GetNullableString("NumeroExpediente"),
+        PacienteDocumento = reader.GetNullableString("PacienteDocumento"),
+        SedeId = reader.GetInt32OrDefault("SedeId"),
+        SedeNombre = reader.GetNullableString("SedeNombre") ?? string.Empty,
+        ServicioId = reader.GetInt32OrDefault("ServicioId"),
+        ServicioNombre = reader.GetNullableString("ServicioNombre") ?? string.Empty,
+        EspecialidadNombre = reader.GetNullableString("EspecialidadNombre"),
+        MedicoId = reader.GetNullableInt32("MedicoId"),
+        MedicoNombre = reader.GetNullableString("MedicoNombre"),
+        ConsultorioId = reader.GetNullableInt32("ConsultorioId"),
+        ConsultorioNombre = reader.GetNullableString("ConsultorioNombre"),
+        AutorizadoPorId = reader.GetNullableInt32("AutorizadoPorId"),
+        AutorizadoPorNombre = reader.GetNullableString("AutorizadoPorNombre"),
+        FechaGeneracion = reader.GetDateTimeOrDefault("FechaGeneracion"),
+        FechaLlamado = reader.GetNullableDateTime("FechaLlamado"),
+        FechaInicioAtencion = reader.GetNullableDateTime("FechaInicioAtencion"),
+        FechaFinAtencion = reader.GetNullableDateTime("FechaFinAtencion"),
+        ContadorLlamados = reader.GetInt32OrDefault("ContadorLlamados")
+    };
+
     private async Task<List<AppointmentSelectionDto>> LoadAppointmentsByIdsAsync(SqlConnection connection, IReadOnlyCollection<long> citaIds, CancellationToken cancellationToken)
     {
         if (citaIds.Count == 0)
@@ -881,53 +806,27 @@ WHERE t.TicketId IN ({string.Join(", ", parameterNames)});";
             return new List<AppointmentSelectionDto>();
         }
 
-        await using var command = connection.CreateCommand();
-        command.CommandType = CommandType.Text;
-        command.CommandTimeout = 60;
-
-        var parameterNames = new List<string>();
-        var index = 0;
-        foreach (var citaId in citaIds.Distinct())
-        {
-            var parameterName = $"@CitaId{index++}";
-            parameterNames.Add(parameterName);
-            command.Parameters.Add(new SqlParameter(parameterName, SqlDbType.BigInt) { Value = citaId });
-        }
-
-        command.CommandText = $@"
-SELECT
-    c.CitaId,
-    c.PacienteId,
-    c.FechaInicio,
-    c.Estado,
-    COALESCE(NULLIF(LTRIM(RTRIM(CONCAT(ISNULL(up.Nombres, N''), N' ', ISNULL(up.Apellidos, N'')))), N''), CONCAT(N'Paciente #', c.PacienteId)) AS PacienteNombre,
-    sv.Nombre AS ServicioNombre,
-    s.Nombre AS SedeNombre,
-    CASE WHEN um.UsuarioId IS NULL THEN NULL ELSE LTRIM(RTRIM(CONCAT(ISNULL(um.Nombres, N''), N' ', ISNULL(um.Apellidos, N'')))) END AS MedicoNombre,
-    p.NumeroExpediente,
-    p.NumeroDocumento
-FROM dbo.Citas c
-INNER JOIN dbo.Pacientes p ON p.PacienteId = c.PacienteId
-LEFT JOIN dbo.Usuarios up ON up.UsuarioId = p.UsuarioId
-INNER JOIN dbo.Sedes s ON s.SedeId = c.SedeId
-INNER JOIN dbo.Servicios sv ON sv.ServicioId = c.ServicioId
-LEFT JOIN dbo.Medicos m ON m.MedicoId = c.MedicoId
-LEFT JOIN dbo.Usuarios um ON um.UsuarioId = m.UsuarioId
-WHERE c.CitaId IN ({string.Join(", ", parameterNames)})
-ORDER BY c.FechaInicio ASC, c.CitaId ASC;";
-
         var data = new List<AppointmentSelectionDto>();
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
+        foreach (var citaIdFilter in citaIds.Distinct())
         {
+            await using var command = CreateStoredProcedureCommand(connection, "dbo.sp_Cita_Obtener");
+            AddParameter(command, "@CitaId", citaIdFilter);
+
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (!await reader.ReadAsync(cancellationToken))
+            {
+                continue;
+            }
+
             var citaId = reader.GetInt64OrDefault("CitaId");
-            var pacienteNombre = reader.GetNullableString("PacienteNombre") ?? $"Paciente #{reader.GetInt32OrDefault("PacienteId")}";
+            var pacienteId = reader.GetInt32OrDefault("PacienteId");
+            var pacienteNombre = reader.GetNullableString("PacienteNombre") ?? $"Paciente #{pacienteId}";
             var servicioNombre = reader.GetNullableString("ServicioNombre") ?? string.Empty;
             var sedeNombre = reader.GetNullableString("SedeNombre") ?? string.Empty;
             var medicoNombre = reader.GetNullableString("MedicoNombre");
             var fechaInicio = reader.GetDateTimeOrDefault("FechaInicio");
             var expediente = reader.GetNullableString("NumeroExpediente");
-            var documento = reader.GetNullableString("NumeroDocumento");
+            var documento = reader.GetNullableString("DocumentoPaciente");
 
             var labelParts = new List<string>
             {
@@ -937,25 +836,14 @@ ORDER BY c.FechaInicio ASC, c.CitaId ASC;";
                 sedeNombre
             };
 
-            if (!string.IsNullOrWhiteSpace(medicoNombre))
-            {
-                labelParts.Add($"Dr(a). {medicoNombre}");
-            }
-
-            if (!string.IsNullOrWhiteSpace(expediente))
-            {
-                labelParts.Add(expediente);
-            }
-
-            if (!string.IsNullOrWhiteSpace(documento))
-            {
-                labelParts.Add(documento);
-            }
+            if (!string.IsNullOrWhiteSpace(medicoNombre)) labelParts.Add($"Dr(a). {medicoNombre}");
+            if (!string.IsNullOrWhiteSpace(expediente)) labelParts.Add(expediente);
+            if (!string.IsNullOrWhiteSpace(documento)) labelParts.Add(documento);
 
             data.Add(new AppointmentSelectionDto
             {
                 CitaId = citaId,
-                PacienteId = reader.GetInt32OrDefault("PacienteId"),
+                PacienteId = pacienteId,
                 FechaInicio = fechaInicio,
                 Estado = reader.GetNullableString("Estado") ?? string.Empty,
                 PacienteNombre = pacienteNombre,
@@ -966,44 +854,64 @@ ORDER BY c.FechaInicio ASC, c.CitaId ASC;";
             });
         }
 
-        return data;
+        return data
+            .OrderBy(x => x.FechaInicio)
+            .ThenBy(x => x.CitaId)
+            .ToList();
     }
 
     private async Task<(string SedeNombre, string ServicioNombre)> LoadQueueContextAsync(SqlConnection connection, int? sedeId, int? servicioId, CancellationToken cancellationToken)
     {
-        if (!sedeId.HasValue || !servicioId.HasValue)
+        var sedeNombre = sedeId.HasValue ? $"Sede #{sedeId.Value}" : string.Empty;
+        var servicioNombre = servicioId.HasValue ? $"Servicio #{servicioId.Value}" : string.Empty;
+
+        if (sedeId.HasValue)
         {
-            return (sedeId.HasValue ? $"Sede #{sedeId.Value}" : string.Empty, servicioId.HasValue ? $"Servicio #{servicioId.Value}" : string.Empty);
+            await using var sedeCommand = CreateStoredProcedureCommand(connection, "dbo.sp_Sede_Listar");
+            AddParameter(sedeCommand, "@Estado", "ACTIVA");
+            AddParameter(sedeCommand, "@MunicipioId", null);
+
+            await using var sedeReader = await sedeCommand.ExecuteReaderAsync(cancellationToken);
+            while (await sedeReader.ReadAsync(cancellationToken))
+            {
+                if (sedeReader.GetInt32OrDefault("SedeId") == sedeId.Value)
+                {
+                    sedeNombre = sedeReader.GetNullableString("Nombre") ?? sedeNombre;
+                    break;
+                }
+            }
         }
 
-        await using var command = connection.CreateCommand();
-        command.CommandText = @"
-SELECT TOP (1)
-    s.Nombre AS SedeNombre,
-    sv.Nombre AS ServicioNombre
-FROM dbo.Sedes s
-INNER JOIN dbo.Servicios sv ON sv.SedeId = s.SedeId
-WHERE s.SedeId = @SedeId AND sv.ServicioId = @ServicioId;";
-        command.Parameters.Add(new SqlParameter("@SedeId", SqlDbType.Int) { Value = sedeId.Value });
-        command.Parameters.Add(new SqlParameter("@ServicioId", SqlDbType.Int) { Value = servicioId.Value });
-
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        if (await reader.ReadAsync(cancellationToken))
+        if (servicioId.HasValue)
         {
-            return (reader.GetNullableString("SedeNombre") ?? $"Sede #{sedeId.Value}", reader.GetNullableString("ServicioNombre") ?? $"Servicio #{servicioId.Value}");
+            await using var servicioCommand = CreateStoredProcedureCommand(connection, "dbo.sp_Servicio_Listar");
+            AddParameter(servicioCommand, "@SedeId", sedeId);
+            AddParameter(servicioCommand, "@EspecialidadId", null);
+            AddParameter(servicioCommand, "@Activo", true);
+
+            await using var servicioReader = await servicioCommand.ExecuteReaderAsync(cancellationToken);
+            while (await servicioReader.ReadAsync(cancellationToken))
+            {
+                if (servicioReader.GetInt32OrDefault("ServicioId") == servicioId.Value)
+                {
+                    servicioNombre = servicioReader.GetNullableString("Nombre") ?? servicioNombre;
+                    break;
+                }
+            }
         }
 
-        return ($"Sede #{sedeId.Value}", $"Servicio #{servicioId.Value}");
+        return (sedeNombre, servicioNombre);
     }
 
     private async Task<string?> LoadConsultorioNameAsync(SqlConnection connection, int consultorioId, CancellationToken cancellationToken)
     {
-        await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT TOP (1) Nombre FROM dbo.Consultorios WHERE ConsultorioId = @ConsultorioId;";
-        command.Parameters.Add(new SqlParameter("@ConsultorioId", SqlDbType.Int) { Value = consultorioId });
+        await using var command = CreateStoredProcedureCommand(connection, "dbo.sp_Consultorio_Obtener");
+        AddParameter(command, "@ConsultorioId", consultorioId);
 
-        var scalar = await command.ExecuteScalarAsync(cancellationToken);
-        return scalar?.ToString();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken)
+            ? reader.GetNullableString("Nombre")
+            : null;
     }
 
     private static SqlCommand CreateStoredProcedureCommand(SqlConnection connection, string procedureName)

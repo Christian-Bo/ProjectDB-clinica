@@ -52,17 +52,11 @@ public sealed class AuthRepository
         await conn.OpenAsync();
 
         await using var cmd = conn.CreateCommand();
-        cmd.CommandType = CommandType.Text;
-        cmd.CommandText = @"
-            INSERT INTO dbo.SesionesUsuario
-                (UsuarioId, Token, FechaExpiracion, Estado)
-            VALUES
-                (@uid, @tok,
-                 DATEADD(MINUTE, @min, SYSUTCDATETIME()),
-                 'ACTIVA')";
-        cmd.Parameters.AddWithValue("@uid", usuarioId);
-        cmd.Parameters.AddWithValue("@tok", token);
-        cmd.Parameters.AddWithValue("@min", minutesExpiry);
+        cmd.CommandType = CommandType.StoredProcedure;
+        cmd.CommandText = "dbo.sp_RegistrarSesionUsuario";
+        cmd.Parameters.AddWithValue("@UsuarioId", usuarioId);
+        cmd.Parameters.AddWithValue("@Token", token);
+        cmd.Parameters.AddWithValue("@MinutesExpiry", minutesExpiry);
         await cmd.ExecuteNonQueryAsync();
     }
 
@@ -72,14 +66,12 @@ public sealed class AuthRepository
         await conn.OpenAsync();
 
         await using var cmd = conn.CreateCommand();
-        cmd.CommandType = CommandType.Text;
-        cmd.CommandText = @"
-            INSERT INTO dbo.IntentosAcceso
-                (CorreoElectronico, IPOrigen, Exitoso, MotivoFallo)
-            VALUES
-                (@correo, @ip, 0, 'CREDENCIALES_INVALIDAS')";
-        cmd.Parameters.AddWithValue("@correo", correo);
-        cmd.Parameters.AddWithValue("@ip", (object?)ip ?? DBNull.Value);
+        cmd.CommandType = CommandType.StoredProcedure;
+        cmd.CommandText = "dbo.sp_RegistrarIntentoAcceso";
+        cmd.Parameters.AddWithValue("@CorreoElectronico", correo);
+        cmd.Parameters.AddWithValue("@IPOrigen", (object?)ip ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@Exitoso", false);
+        cmd.Parameters.AddWithValue("@MotivoFallo", "CREDENCIALES_INVALIDAS");
         await cmd.ExecuteNonQueryAsync();
     }
 

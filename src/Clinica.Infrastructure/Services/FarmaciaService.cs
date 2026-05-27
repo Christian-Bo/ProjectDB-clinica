@@ -13,8 +13,8 @@ namespace Clinica.Infrastructure.Services;
 // FarmaciaService
 // SPs consumidos (parámetros verificados contra 29_SPs_Complementarios):
 //   dbo.sp_Medicamento_Upsert  → devuelve IdGenerado o IdActualizado
-//   dbo.sp_Medicamento_Obtener → devuelve SELECT * FROM dbo.Medicamentos
-//   dbo.sp_Medicamento_Listar  → devuelve SELECT * filtrado
+//   dbo.sp_Medicamento_Obtener → devuelve columnas controladas de medicamentos
+//   dbo.sp_Medicamento_Listar  → devuelve listado filtrado de medicamentos
 //   dbo.sp_DespacharReceta     → devuelve HttpStatus/Codigo/Mensaje
 // =============================================================================
 public sealed class FarmaciaService : IFarmaciaService

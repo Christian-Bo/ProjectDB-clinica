@@ -286,8 +286,8 @@ public sealed class TicketsRepository(SqlExecutor db)
                 {
                     var statusRow  = statusTable.Rows[0];
                     int httpStatus = statusRow.Int32("HttpStatus");
-                    string code    = statusRow.Str("Code");
-                    string message = statusRow.Str("Message");
+                    string code    = statusTable.HasColumn("Code") ? statusRow.Str("Code") : statusRow.Str("Codigo");
+                    string message = statusTable.HasColumn("Message") ? statusRow.Str("Message") : statusRow.Str("Mensaje");
 
                     if (httpStatus == 409)
                         throw new ConflictException(message, code);
@@ -314,14 +314,14 @@ public sealed class TicketsRepository(SqlExecutor db)
         NumeroTicket          = row.Str("NumeroTicket"),
         Estado                = row.Str("Estado"),
         Prioridad             = row.Str("Prioridad"),
-        EsEspecial            = row.Bool("EsEspecial"),
-        MotivoEspecial        = row.StrNull("MotivoEspecial"),
-        CitaId                = row.Int64Null("CitaId"),
-        CitaEstado            = row.StrNull("CitaEstado"),
+        EsEspecial            = row.Table.HasColumn("EsEspecial") && row.Bool("EsEspecial"),
+        MotivoEspecial        = row.Table.HasColumn("MotivoEspecial") ? row.StrNull("MotivoEspecial") : null,
+        CitaId                = row.Table.HasColumn("CitaId") ? row.Int64Null("CitaId") : null,
+        CitaEstado            = row.Table.HasColumn("CitaEstado") ? row.StrNull("CitaEstado") : null,
         PacienteId            = row.Int64("PacienteId"),
         PacienteNombre        = row.Str("PacienteNombre"),
-        NumeroExpediente      = row.StrNull("NumeroExpediente"),
-        PacienteDocumento     = row.StrNull("PacienteDocumento"),
+        NumeroExpediente      = row.Table.HasColumn("NumeroExpediente") ? row.StrNull("NumeroExpediente") : null,
+        PacienteDocumento     = row.Table.HasColumn("PacienteDocumento") ? row.StrNull("PacienteDocumento") : null,
         SedeId                = row.Int32("SedeId"),
         SedeNombre            = row.Str("SedeNombre"),
         ServicioId            = row.Int32("ServicioId"),
@@ -329,12 +329,12 @@ public sealed class TicketsRepository(SqlExecutor db)
         EspecialidadNombre    = row.Table.HasColumn("EspecialidadNombre") ? row.StrNull("EspecialidadNombre") : null,
         VentanillaNumero      = row.Table.HasColumn("VentanillaNumero") ? row.Int32Null("VentanillaNumero") : null,
         VentanillaNombre      = row.Table.HasColumn("VentanillaNombre") ? row.StrNull("VentanillaNombre") : null,
-        MedicoId              = row.Int32Null("MedicoId"),
-        MedicoNombre          = row.StrNull("MedicoNombre"),
-        ConsultorioId         = row.Int32Null("ConsultorioId"),
-        ConsultorioNombre     = row.StrNull("ConsultorioNombre"),
-        AutorizadoPorId       = row.Int32Null("AutorizadoPorId"),
-        AutorizadoPorNombre   = row.StrNull("AutorizadoPorNombre"),
+        MedicoId              = row.Table.HasColumn("MedicoId") ? row.Int32Null("MedicoId") : null,
+        MedicoNombre          = row.Table.HasColumn("MedicoNombre") ? row.StrNull("MedicoNombre") : null,
+        ConsultorioId         = row.Table.HasColumn("ConsultorioId") ? row.Int32Null("ConsultorioId") : null,
+        ConsultorioNombre     = row.Table.HasColumn("ConsultorioNombre") ? row.StrNull("ConsultorioNombre") : null,
+        AutorizadoPorId       = row.Table.HasColumn("AutorizadoPorId") ? row.Int32Null("AutorizadoPorId") : null,
+        AutorizadoPorNombre   = row.Table.HasColumn("AutorizadoPorNombre") ? row.StrNull("AutorizadoPorNombre") : null,
         FechaGeneracion       = row.DateTime("FechaGeneracion"),
         FechaLlamado          = row.DateTimeNull("FechaLlamado"),
         FechaInicioAtencion   = row.DateTimeNull("FechaInicioAtencion"),

@@ -65,6 +65,15 @@ public sealed class SesionTelemedicaDto
     public long CitaId { get; init; }
     public long? ConsultaId { get; init; }
     public int? PlataformaVideoId { get; init; }
+    public string? PlataformaVideoNombre { get; init; }
+    public int? PacienteId { get; init; }
+    public string? PacienteNombre { get; init; }
+    public int? MedicoId { get; init; }
+    public string? MedicoNombre { get; init; }
+    public int? SedeId { get; init; }
+    public string? SedeNombre { get; init; }
+    public int? ServicioId { get; init; }
+    public string? ServicioNombre { get; init; }
     public string UrlSala { get; init; } = string.Empty;
     public string CodigoSala { get; init; } = string.Empty;
     public string? PasswordSala { get; init; }
