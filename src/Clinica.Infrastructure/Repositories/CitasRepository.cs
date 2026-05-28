@@ -61,7 +61,9 @@ public sealed class CitasRepository
                 new SqlParameter("@CitaId",           citaId),
                 new SqlParameter("@NuevaFechaInicio", dto.NuevaFechaInicio),
                 new SqlParameter("@UsuarioId",        dto.UsuarioId),
-                new SqlParameter("@IdempotencyKey",   dto.IdempotencyKey)
+                // FIX: pasar NULL cuando no hay key real — evita el cache de idempotencia
+                new SqlParameter("@IdempotencyKey",
+                    dto.IdempotencyKey == default ? (object)DBNull.Value : dto.IdempotencyKey)
             ]);
     }
 
@@ -91,27 +93,26 @@ public sealed class CitasRepository
 
     private static CitaResponseDto MapCita(SqlDataReader reader) => new()
     {
-        CitaId = reader.GetInt64OrDefault("CitaId"),
-        PacienteId = reader.GetInt32OrDefault("PacienteId"),
-        PacienteNombre = reader.GetNullableString("PacienteNombre") ?? string.Empty,
-        NumeroExpediente = reader.GetNullableString("NumeroExpediente") ?? string.Empty,
-        DocumentoPaciente = reader.GetNullableString("DocumentoPaciente") ?? string.Empty,
-        SedeId = reader.GetInt32OrDefault("SedeId"),
-        NombreSede = reader.GetNullableString("NombreSede") ?? reader.GetNullableString("SedeNombre") ?? string.Empty,
-        ServicioId = reader.GetInt32OrDefault("ServicioId"),
-        NombreServicio = reader.GetNullableString("NombreServicio") ?? reader.GetNullableString("ServicioNombre") ?? string.Empty,
-        MedicoId = reader.GetNullableInt32("MedicoId"),
-        NombreMedico = reader.GetNullableString("NombreMedico") ?? reader.GetNullableString("MedicoNombre"),
-        TipoConsultaId = reader.GetNullableInt32("TipoConsultaId"),
+        CitaId             = reader.GetInt64OrDefault("CitaId"),
+        PacienteId         = reader.GetInt32OrDefault("PacienteId"),
+        PacienteNombre     = reader.GetNullableString("PacienteNombre")     ?? string.Empty,
+        NumeroExpediente   = reader.GetNullableString("NumeroExpediente")   ?? string.Empty,
+        DocumentoPaciente  = reader.GetNullableString("DocumentoPaciente")  ?? string.Empty,
+        SedeId             = reader.GetInt32OrDefault("SedeId"),
+        NombreSede         = reader.GetNullableString("NombreSede")         ?? reader.GetNullableString("SedeNombre")    ?? string.Empty,
+        ServicioId         = reader.GetInt32OrDefault("ServicioId"),
+        NombreServicio     = reader.GetNullableString("NombreServicio")     ?? reader.GetNullableString("ServicioNombre") ?? string.Empty,
+        MedicoId           = reader.GetNullableInt32("MedicoId"),
+        NombreMedico       = reader.GetNullableString("NombreMedico")       ?? reader.GetNullableString("MedicoNombre"),
+        TipoConsultaId     = reader.GetNullableInt32("TipoConsultaId"),
         TipoConsultaNombre = reader.GetNullableString("TipoConsultaNombre"),
-        ConsultorioId = reader.GetNullableInt32("ConsultorioId"),
-        ConsultorioNombre = reader.GetNullableString("ConsultorioNombre"),
-        FechaInicio = reader.GetDateTimeOrDefault("FechaInicio"),
-        FechaFin = reader.GetDateTimeOrDefault("FechaFin"),
-        Estado = reader.GetNullableString("Estado") ?? string.Empty,
-        Modalidad = reader.GetNullableString("Modalidad") ?? string.Empty,
-        MotivoConsulta = reader.GetNullableString("MotivoConsulta"),
-        FechaCreacion = reader.GetDateTimeOrDefault("FechaCreacion")
+        ConsultorioId      = reader.GetNullableInt32("ConsultorioId"),
+        ConsultorioNombre  = reader.GetNullableString("ConsultorioNombre"),
+        FechaInicio        = reader.GetDateTimeOrDefault("FechaInicio"),
+        FechaFin           = reader.GetDateTimeOrDefault("FechaFin"),
+        Estado             = reader.GetNullableString("Estado")             ?? string.Empty,
+        Modalidad          = reader.GetNullableString("Modalidad")          ?? string.Empty,
+        MotivoConsulta     = reader.GetNullableString("MotivoConsulta"),
+        FechaCreacion      = reader.GetDateTimeOrDefault("FechaCreacion")
     };
-
 }
