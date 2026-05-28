@@ -21,15 +21,16 @@ public sealed class TicketsRepository(SqlExecutor db)
     {
         var parameters = new[]
         {
-            Sql.BigInt("@CitaId",              citaId),
-            Sql.BigInt("@PacienteId",          pacienteId),
-            Sql.Int   ("@SedeId",              sedeId),
-            Sql.Int   ("@ServicioId",          servicioId),
-            Sql.Int   ("@MedicoId",            medicoId),
-            Sql.NVarChar("@PrioridadSolicitada", prioridad, 30),
-            Sql.NVarChar("@MotivoEspecial",    motivo, 500),
-            Sql.Int   ("@UsuarioId",           usuarioId),
-            Sql.UniqueId("@IdempotencyKey",    idempotencyKey),
+            Sql.BigInt  ("@CitaId",               citaId),
+            Sql.BigInt  ("@PacienteId",           pacienteId),
+            Sql.Int     ("@SedeId",               sedeId),
+            Sql.Int     ("@ServicioId",           servicioId),
+            // @MedicoId eliminado — sp_GenerarTicket no acepta ese parámetro
+            // el SP lo obtiene internamente desde la cita (SELECT @MedicoId = c.MedicoId)
+            Sql.NVarChar("@PrioridadSolicitada",  prioridad, 30),
+            Sql.NVarChar("@MotivoEspecial",       motivo, 500),
+            Sql.Int     ("@UsuarioId",            usuarioId),
+            Sql.UniqueId("@IdempotencyKey",       idempotencyKey),
         };
 
         var ds = await db.ExecuteSpAsync("dbo.sp_GenerarTicket", parameters, ct);
@@ -68,15 +69,15 @@ public sealed class TicketsRepository(SqlExecutor db)
     {
         var parameters = new[]
         {
-            Sql.BigInt  ("@PacienteId",             pacienteId),
-            Sql.NVarChar("@DocumentoPaciente",      documentoPaciente, 30),
+            Sql.BigInt  ("@PacienteId",            pacienteId),
+            Sql.NVarChar("@DocumentoPaciente",     documentoPaciente, 30),
             Sql.Bit     ("@UsarPacienteNoAplica",  usarPacienteNoAplica),
-            Sql.Int     ("@SedeId",                 sedeId),
-            Sql.Int     ("@ServicioId",             servicioId),
-            Sql.NVarChar("@PrioridadSolicitada",    prioridad, 30),
-            Sql.NVarChar("@MotivoEspecial",         motivo, 500),
-            Sql.Int     ("@UsuarioId",              usuarioId),
-            Sql.UniqueId("@IdempotencyKey",         idempotencyKey),
+            Sql.Int     ("@SedeId",                sedeId),
+            Sql.Int     ("@ServicioId",            servicioId),
+            Sql.NVarChar("@PrioridadSolicitada",   prioridad, 30),
+            Sql.NVarChar("@MotivoEspecial",        motivo, 500),
+            Sql.Int     ("@UsuarioId",             usuarioId),
+            Sql.UniqueId("@IdempotencyKey",        idempotencyKey),
         };
 
         var ds = await db.ExecuteSpAsync("dbo.sp_GenerarTicketKiosco", parameters, ct);
@@ -226,7 +227,6 @@ public sealed class TicketsRepository(SqlExecutor db)
 
         ResumenOperativoDto resumen = new() { SedeId = sedeId, ServicioId = servicioId };
 
-        // Table 0: métricas totales
         if (ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
         {
             var row = ds.Tables[0].Rows[0];
@@ -241,7 +241,6 @@ public sealed class TicketsRepository(SqlExecutor db)
             };
         }
 
-        // Table 1: último ticket llamado
         if (ds.Tables.Count > 1 && ds.Tables[1].Rows.Count > 0)
         {
             var row = ds.Tables[1].Rows[0];
@@ -260,11 +259,8 @@ public sealed class TicketsRepository(SqlExecutor db)
 
     private static TicketDto MapTicketFromDataSet(DataSet ds, string spName)
     {
-        // Los SPs devuelven en Table[0] el status y en Table[1] el ticket,
-        // o directamente en Table[0] el ticket si el SP es más simple.
         DataTable? ticketTable = null;
 
-        // Busca la tabla que tenga la columna TicketId
         foreach (DataTable t in ds.Tables)
         {
             if (t.HasColumn("TicketId") || t.HasColumn("ticketId"))
@@ -274,11 +270,8 @@ public sealed class TicketsRepository(SqlExecutor db)
             }
         }
 
-        // Si no encontramos por columna, intentamos leer Table[0] o Table[1]
         if (ticketTable is null)
         {
-            // Table[0] podría ser el resultado de estado HTTP del SP (HttpStatus, Code, Message)
-            // En ese caso revisamos si hay error
             if (ds.Tables.Count > 0)
             {
                 var statusTable = ds.Tables[0];
@@ -297,7 +290,6 @@ public sealed class TicketsRepository(SqlExecutor db)
                         throw new InvalidOperationException(message);
                 }
 
-                // Intenta tabla siguiente
                 ticketTable = ds.Tables.Count > 1 ? ds.Tables[1] : ds.Tables[0];
             }
         }
