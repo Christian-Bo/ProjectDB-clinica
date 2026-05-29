@@ -50,5 +50,22 @@ public sealed class RecetaItemResponseDto
     public string Dosis { get; set; } = string.Empty;
     public string Frecuencia { get; set; } = string.Empty;
     public int DuracionDias { get; set; }
+    public decimal Cantidad { get; set; }
+    public string Unidad { get; set; } = string.Empty;
     public string? Indicaciones { get; set; }
+}
+
+public sealed class RecetaListadoDto
+{
+    public long      RecetaId          { get; set; }
+    public long      ConsultaId        { get; set; }
+    public int       PacienteId        { get; set; }
+    public string    PacienteNombre    { get; set; } = string.Empty;
+    public int       MedicoId          { get; set; }
+    public string    MedicoNombre      { get; set; } = string.Empty;
+    public string    Estado            { get; set; } = string.Empty;
+    public DateTime  FechaEmision      { get; set; }
+    public string?   Observaciones     { get; set; }
+    public int       TotalMedicamentos { get; set; }
+    public string?   Medicamentos      { get; set; }
 }

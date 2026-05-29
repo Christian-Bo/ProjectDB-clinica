@@ -18,4 +18,7 @@ public interface IRecetasService
     Task<ServiceOperationResult<RecetaResponseDto>> ObtenerAsync(
         long recetaId,
         CancellationToken cancellationToken = default);
+    Task<List<RecetaListadoDto>> ListarAsync(
+    string estado = "PENDIENTE", string? texto = null,
+    CancellationToken ct = default);
 }

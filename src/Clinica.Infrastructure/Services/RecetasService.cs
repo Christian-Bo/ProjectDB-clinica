@@ -137,7 +137,9 @@ AddParam(command, "@MedicamentosJson", medicamentosJson);
                         Dosis = reader.GetNullableString("Dosis") ?? string.Empty,
                         Frecuencia = reader.GetNullableString("Frecuencia") ?? string.Empty,
                         DuracionDias = reader.GetInt32OrDefault("DuracionDias"),
-                        Indicaciones = reader.GetNullableString("Indicaciones")
+                        Indicaciones = reader.GetNullableString("Indicaciones"),
+                        Cantidad        = reader.IsDBNull("Cantidad") ? 1 : Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("Cantidad"))),
+                        Unidad          = reader.GetNullableString("Unidad") ?? string.Empty,
                     });
                 }
             }
@@ -150,6 +152,37 @@ AddParam(command, "@MedicamentosJson", medicamentosJson);
             _logger.LogError(ex, "Error cargando receta {RecetaId}", recetaId);
             return null;
         }
+    }
+    public async Task<List<RecetaListadoDto>> ListarAsync(
+        string estado = "PENDIENTE", string? texto = null,
+        CancellationToken ct = default)
+    {
+        await using var conn = _db.CreateConnection();
+        await conn.OpenAsync(ct);
+        await using var cmd = CreateSpCommand(conn, "dbo.sp_Recetas_Listar");
+        cmd.Parameters.AddWithValue("@Estado", estado);
+        cmd.Parameters.Add(new SqlParameter("@Texto", System.Data.SqlDbType.NVarChar, 200)
+            { Value = (object?)texto ?? DBNull.Value });
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        var lista = new List<RecetaListadoDto>();
+        while (await reader.ReadAsync(ct))
+        {
+            lista.Add(new RecetaListadoDto
+            {
+                RecetaId          = reader.GetInt64(reader.GetOrdinal("RecetaId")),
+                ConsultaId        = reader.GetInt64(reader.GetOrdinal("ConsultaId")),
+                PacienteId        = reader.GetInt32(reader.GetOrdinal("PacienteId")),
+                PacienteNombre    = reader.GetNullableString("PacienteNombre")    ?? string.Empty,
+                MedicoId          = reader.GetInt32(reader.GetOrdinal("MedicoId")),
+                MedicoNombre      = reader.GetNullableString("MedicoNombre")      ?? string.Empty,
+                Estado            = reader.GetNullableString("Estado")            ?? string.Empty,
+                FechaEmision      = reader.GetDateTime(reader.GetOrdinal("FechaEmision")),
+                Observaciones     = reader.GetNullableString("Observaciones"),
+                TotalMedicamentos = reader.GetInt32(reader.GetOrdinal("TotalMedicamentos")),
+                Medicamentos = reader.GetNullableString("Medicamentos"),
+            });
+        }
+        return lista;
     }
 
     private static long? TryGetLongColumn(SqlDataReader reader, string columnName)

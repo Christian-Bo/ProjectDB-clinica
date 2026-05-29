@@ -1,6 +1,7 @@
 using Clinica.Application.Contracts;
 using Clinica.Application.Models.Recetas;
 using Microsoft.AspNetCore.Authorization;
+using Clinica.Application.DTOs.Common;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Clinica.API.Controllers;
@@ -45,5 +46,15 @@ public sealed class RecetasController : BaseController
     {
         var result = await _recetasService.ObtenerAsync(recetaId, cancellationToken);
         return ToActionResult(result);
+    }
+    // GET /api/recetas?estado=PENDIENTE&texto=juan
+    [HttpGet]
+    public async Task<IActionResult> Listar(
+        [FromQuery] string  estado = "PENDIENTE",
+        [FromQuery] string? texto  = null,
+        CancellationToken ct = default)
+    {
+        var lista = await _recetasService.ListarAsync(estado, texto, ct);
+        return Ok(ApiResponse<List<RecetaListadoDto>>.Success(lista));
     }
 }
