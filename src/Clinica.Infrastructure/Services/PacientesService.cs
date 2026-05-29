@@ -67,4 +67,6 @@ public sealed class PacientesService : IPacientesService
     {
         return await _repo.ObtenerPorUsuarioAsync(usuarioId);
     }
+    public async Task<List<AlergiasCatalogoDto>> ListarCatalogoAlergiasAsync()
+        => await _repo.ListarCatalogoAlergiasAsync();
 }

@@ -1,6 +1,7 @@
 using Clinica.Application.Contracts;
 using Clinica.Application.Models.Consultas;
 using Microsoft.AspNetCore.Authorization;
+using Clinica.Application.DTOs.Common;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Clinica.API.Controllers;
@@ -28,7 +29,21 @@ public sealed class ConsultasController : BaseController
     // -------------------------------------------------------------------------
     // Abre una consulta desde un ticket válido.
     // El SP valida que el ticket exista y esté en estado apto para atención.
-    // -------------------------------------------------------------------------
+    // ----------------------------------------------------------------W---------
+    // GET /api/consultas?medicoId=1&pageSize=10
+    [HttpGet]
+    public async Task<IActionResult> Listar(
+        [FromQuery] int? medicoId,
+        [FromQuery] int  pageSize = 10,
+        CancellationToken ct = default)
+    {
+        if (medicoId is null)
+            return BadRequest(ApiResponse<object>.Fail("medicoId es requerido.", "PARAM_REQUERIDO"));
+        var lista = await _consultasService.ListarPorMedicoAsync(medicoId.Value, pageSize, ct);
+        return Ok(ApiResponse<List<ConsultaListado>>.Success(lista));
+    }
+
+
     [HttpPost("abrir-desde-ticket")]
     public async Task<IActionResult> AbrirDesdeTicket(
         [FromBody] AbrirConsultaRequestDto request,

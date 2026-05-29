@@ -65,3 +65,10 @@ public sealed class AlergiaResponseDto
     public DateTime? FechaDeteccion { get; set; }
     public DateTime FechaRegistro { get; set; }
 }
+public sealed class AlergiasCatalogoDto
+{
+    public int     AlergiaId       { get; set; }
+    public string  Nombre          { get; set; } = string.Empty;
+    public string  TipoAlergia     { get; set; } = string.Empty;
+    public string? PrincipioActivo { get; set; }
+}

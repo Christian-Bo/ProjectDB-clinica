@@ -142,3 +142,16 @@ public sealed class ConsultaResumenDto
     public int TotalRecetas { get; set; }
     public int TotalOrdenes { get; set; }
 }
+public sealed class ConsultaListado
+{
+    public long      ConsultaId      { get; set; }
+    public long      TicketId        { get; set; }
+    public int       PacienteId      { get; set; }
+    public int       MedicoId        { get; set; }
+    public string    PacienteNombre  { get; set; } = string.Empty;
+    public string    Estado          { get; set; } = string.Empty;
+    public string    Modalidad       { get; set; } = string.Empty;
+    public string?   MotivoConsulta  { get; set; }
+    public DateTime  FechaHoraInicio { get; set; }
+    public DateTime? FechaHoraCierre { get; set; }
+}

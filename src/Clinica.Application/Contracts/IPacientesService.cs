@@ -10,5 +10,6 @@ public interface IPacientesService
     Task AgregarAlergiaAsync(int pacienteId, AlergiaRequestDto dto);
     Task QuitarAlergiaAsync(int pacienteId, int alergiaId);
     Task<PacienteResponseDto?> ObtenerPorUsuarioAsync(int usuarioId);
+    Task<List<AlergiasCatalogoDto>> ListarCatalogoAlergiasAsync();
 
 }

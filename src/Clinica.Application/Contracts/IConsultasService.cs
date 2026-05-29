@@ -35,4 +35,6 @@ public interface IConsultasService
     Task<ServiceOperationResult<HistorialClinicoResponseDto>> ObtenerHistorialAsync(
         int pacienteId,
         CancellationToken cancellationToken = default);
+    Task<List<ConsultaListado>> ListarPorMedicoAsync(
+        int medicoId, int top = 10, CancellationToken ct = default);
 }

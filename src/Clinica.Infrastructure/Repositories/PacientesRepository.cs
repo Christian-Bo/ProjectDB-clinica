@@ -86,6 +86,19 @@ public sealed class PacientesRepository
                 FechaRegistro     = reader.GetDateTimeOrDefault("FechaRegistro")
             });
     }
+    public async Task<List<AlergiasCatalogoDto>> ListarCatalogoAlergiasAsync()
+    {
+        return await _executor.QueryAsync(
+            "dbo.sp_Alergias_Catalogo",
+            [],
+            reader => new AlergiasCatalogoDto
+            {
+                AlergiaId       = reader.GetInt32OrDefault("AlergiaId"),
+                Nombre          = reader.GetNullableString("Nombre")          ?? string.Empty,
+                TipoAlergia     = reader.GetNullableString("TipoAlergia")     ?? string.Empty,
+                PrincipioActivo = reader.GetNullableString("PrincipioActivo"),
+            });
+    }
 
     public async Task<SpResult> AgregarAlergiaAsync(int pacienteId, AlergiaRequestDto dto)
     {

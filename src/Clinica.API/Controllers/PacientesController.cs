@@ -59,6 +59,16 @@ public sealed class PacientesController : ControllerBase
             ApiResponse<PacienteResponseDto>.Success(paciente!, "Paciente creado correctamente."));
     }
 
+    // GET /api/alergias
+    [HttpGet]
+    [Route("/api/alergias")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ListarCatalogoAlergias()
+    {
+        var alergias = await _service.ListarCatalogoAlergiasAsync();
+        return Ok(ApiResponse<List<AlergiasCatalogoDto>>.Success(alergias!));
+    }
+
     // GET /api/pacientes/{id}/alergias
     [HttpGet("{id:int}/alergias")]
     public async Task<IActionResult> ListarAlergias(int id)

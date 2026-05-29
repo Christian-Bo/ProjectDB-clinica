@@ -263,15 +263,15 @@ public sealed class ConsultasService : IConsultasService
             {
                 consulta.SignosVitales = new SignosVitalesDto
                 {
-                    PresionSistolica = reader.IsDBNull("PresionSistolica") ? null : reader.GetDecimal(reader.GetOrdinal("PresionSistolica")),
-                    PresionDiastolica = reader.IsDBNull("PresionDiastolica") ? null : reader.GetDecimal(reader.GetOrdinal("PresionDiastolica")),
-                    FrecuenciaCardiaca = reader.IsDBNull("FrecuenciaCardiaca") ? null : reader.GetDecimal(reader.GetOrdinal("FrecuenciaCardiaca")),
-                    FrecuenciaRespiratoria = reader.IsDBNull("FrecuenciaRespiratoria") ? null : reader.GetDecimal(reader.GetOrdinal("FrecuenciaRespiratoria")),
-                    Temperatura = reader.IsDBNull("Temperatura") ? null : reader.GetDecimal(reader.GetOrdinal("Temperatura")),
-                    SaturacionOxigeno = reader.IsDBNull("SaturacionOxigeno") ? null : reader.GetDecimal(reader.GetOrdinal("SaturacionOxigeno")),
-                    PesoKg = reader.IsDBNull("PesoKg") ? null : reader.GetDecimal(reader.GetOrdinal("PesoKg")),
-                    TallaCm = reader.IsDBNull("TallaCm") ? null : reader.GetDecimal(reader.GetOrdinal("TallaCm")),
-                    Imc = reader.IsDBNull("Imc") ? null : reader.GetDecimal(reader.GetOrdinal("Imc"))
+                    PresionSistolica = reader.IsDBNull("PresionSistolica") ? null : Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("PresionSistolica"))),
+                    PresionDiastolica = reader.IsDBNull("PresionDiastolica") ? null : Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("PresionDiastolica"))),
+                    FrecuenciaCardiaca = reader.IsDBNull("FrecuenciaCardiaca") ? null : Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("FrecuenciaCardiaca"))),
+                    FrecuenciaRespiratoria = reader.IsDBNull("FrecuenciaRespiratoria") ? null : Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("FrecuenciaRespiratoria"))),
+                    Temperatura = reader.IsDBNull("Temperatura") ? null : Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("Temperatura"))),
+                    SaturacionOxigeno = reader.IsDBNull("SaturacionOxigeno") ? null : Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("SaturacionOxigeno"))),
+                    PesoKg = reader.IsDBNull("PesoKg") ? null : Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("PesoKg"))),
+                    TallaCm = reader.IsDBNull("TallaCm") ? null : Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("TallaCm"))),
+                    Imc = reader.IsDBNull("Imc") ? null : Convert.ToDecimal(reader.GetValue(reader.GetOrdinal("Imc")))
                 };
             }
 
@@ -360,6 +360,36 @@ public sealed class ConsultasService : IConsultasService
                 Message = ex.Message
             };
         }
+    }
+
+    public async Task<List<ConsultaListado>> ListarPorMedicoAsync(
+        int medicoId, int top = 10, CancellationToken ct = default)
+    {
+        await using var conn = _db.CreateConnection();
+        await conn.OpenAsync(ct);
+        await using var cmd  = CreateSpCommand(conn, "dbo.sp_Consulta_ListarPorMedico");
+        cmd.Parameters.AddWithValue("@MedicoId", medicoId);
+        cmd.Parameters.AddWithValue("@Top",      top);
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        var lista = new List<ConsultaListado>();
+        while (await reader.ReadAsync(ct))
+        {
+            lista.Add(new ConsultaListado
+            {
+                ConsultaId       = reader.GetInt64(reader.GetOrdinal("ConsultaId")),
+                TicketId         = reader.GetInt64(reader.GetOrdinal("TicketId")),
+                PacienteId       = reader.GetInt32(reader.GetOrdinal("PacienteId")),
+                MedicoId         = reader.GetInt32(reader.GetOrdinal("MedicoId")),
+                PacienteNombre   = reader.GetNullableString("PacienteNombre") ?? string.Empty,
+                Estado           = reader.GetNullableString("Estado")         ?? string.Empty,
+                Modalidad        = reader.GetNullableString("Modalidad")      ?? string.Empty,
+                MotivoConsulta   = reader.GetNullableString("MotivoConsulta"),
+                FechaHoraInicio  = reader.GetDateTime(reader.GetOrdinal("FechaHoraInicio")),
+                FechaHoraCierre  = reader.IsDBNull("FechaHoraCierre") ? null
+                                   : reader.GetDateTime(reader.GetOrdinal("FechaHoraCierre")),
+            });
+        }
+        return lista;
     }
 
     private static long? TryGetConsultaId(SqlDataReader reader)
