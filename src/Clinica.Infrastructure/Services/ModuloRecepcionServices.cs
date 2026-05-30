@@ -59,6 +59,9 @@ public sealed class TicketsService(TicketsRepository repo) : ITicketsService
         throw new ArgumentException("Debe proporcionar ticketId o numeroTicket.");
     }
 
+    public Task<List<TicketSeguimientoPacienteDto>> ObtenerSeguimientoPacienteAsync(long pacienteId, int top, CancellationToken ct) =>
+        repo.ObtenerSeguimientoPacienteAsync(pacienteId, top, ct);
+
     public Task<ResumenOperativoDto> ObtenerResumenOperativoAsync(int? sedeId, int? servicioId, CancellationToken ct) =>
         repo.ObtenerResumenOperativoAsync(sedeId, servicioId, ct);
 }

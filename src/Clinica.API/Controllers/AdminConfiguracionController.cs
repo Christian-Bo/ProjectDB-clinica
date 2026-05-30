@@ -367,6 +367,7 @@ public sealed class AdminConfiguracionController : ControllerBase
     }
 
     [HttpGet("parametros")]
+    [HttpGet("reglas-operativas")]
     public async Task<IActionResult> ListarParametros([FromQuery] string? categoria = null, [FromQuery] string? busqueda = null, CancellationToken ct = default)
     {
         var rows = await _sql.QueryAsync("dbo.sp_AdminConfig_Parametros_Listar", new[]
@@ -390,6 +391,7 @@ public sealed class AdminConfiguracionController : ControllerBase
     }
 
     [HttpPost("parametros")]
+    [HttpPost("reglas-operativas")]
     public async Task<IActionResult> GuardarParametro([FromBody] ParametroRequest req, CancellationToken ct)
     {
         var rows = await _sql.QueryAsync("dbo.sp_AdminConfig_Parametro_Guardar", new[]
@@ -406,6 +408,7 @@ public sealed class AdminConfiguracionController : ControllerBase
     }
 
     [HttpDelete("parametros/{id:int}")]
+    [HttpDelete("reglas-operativas/{id:int}")]
     public async Task<IActionResult> EliminarParametro(int id, CancellationToken ct)
     {
         var rows = await _sql.QueryAsync("dbo.sp_AdminConfig_Parametro_Eliminar", new[]

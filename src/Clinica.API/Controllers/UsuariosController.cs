@@ -9,6 +9,7 @@ namespace Clinica.API.Controllers;
 
 [ApiController]
 [Route("api/admin/usuarios")]
+[Route("api/usuarios")]
 [Authorize(Roles = "Administrador,Supervisor")]
 public sealed class UsuariosController : ControllerBase
 {
@@ -34,18 +35,38 @@ public sealed class UsuariosController : ControllerBase
                 new SqlParameter("@Estado", SqlDbType.NVarChar, 30) { Value = ToDbNull(estado) },
                 new SqlParameter("@RolNombre", SqlDbType.NVarChar, 50) { Value = ToDbNull(rol) },
             },
-            r => new
+            r =>
             {
-                usuarioId         = ReadInt32(r, "UsuarioId"),
-                nombreUsuario     = ReadString(r, "NombreUsuario"),
-                correoElectronico = ReadString(r, "CorreoElectronico"),
-                nombres           = ReadString(r, "Nombres"),
-                apellidos         = ReadString(r, "Apellidos"),
-                telefono          = ReadNullableString(r, "Telefono"),
-                estado            = ReadString(r, "Estado"),
-                rolesActivos      = ReadNullableString(r, "RolesActivos"),
-                fechaCreacion     = ReadDateTime(r, "FechaCreacion"),
-                fechaUltimoAcceso = ReadNullableDateTime(r, "FechaUltimoAcceso"),
+                var usuarioId = ReadInt32(r, "UsuarioId");
+                var nombreUsuario = ReadString(r, "NombreUsuario");
+                var correo = ReadString(r, "CorreoElectronico");
+                var nombres = ReadString(r, "Nombres");
+                var apellidos = ReadString(r, "Apellidos");
+                var nombreCompleto = $"{nombres} {apellidos}".Trim();
+                var roles = ReadNullableString(r, "RolesActivos") ?? string.Empty;
+                var estadoUsuario = ReadString(r, "Estado");
+
+                return new
+                {
+                    usuarioId,
+
+                    // Nombres reales de la BD / backend
+                    nombreUsuario,
+                    correoElectronico = correo,
+                    nombres,
+                    apellidos,
+                    telefono = ReadNullableString(r, "Telefono"),
+                    estado = estadoUsuario,
+                    rolesActivos = roles,
+                    fechaCreacion = ReadDateTime(r, "FechaCreacion"),
+                    fechaUltimoAcceso = ReadNullableDateTime(r, "FechaUltimoAcceso"),
+
+                    // Alias usados por la vista actual del frontend admin
+                    username = nombreUsuario,
+                    nombreCompleto,
+                    email = correo,
+                    roles
+                };
             },
             ct);
 
@@ -55,15 +76,17 @@ public sealed class UsuariosController : ControllerBase
     [HttpPatch("{id:int}/estado")]
     public async Task<IActionResult> CambiarEstado(int id, [FromBody] CambiarEstadoRequest req, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(req.Estado))
-            return BadRequest(new { ok = false, success = false, code = "ESTADO_REQUERIDO", message = "El estado es obligatorio." });
+        var estadoNormalizado = ResolveEstado(req);
+
+        if (string.IsNullOrWhiteSpace(estadoNormalizado))
+            return BadRequest(new { ok = false, success = false, code = "ESTADO_REQUERIDO", message = "Debe enviar 'estado' o 'activo'." });
 
         var rows = await _sql.QueryAsync(
             "dbo.sp_Usuario_CambiarEstado",
             new[]
             {
                 new SqlParameter("@UsuarioId", SqlDbType.Int) { Value = id },
-                new SqlParameter("@Estado", SqlDbType.NVarChar, 30) { Value = req.Estado.Trim().ToUpperInvariant() },
+                new SqlParameter("@Estado", SqlDbType.NVarChar, 30) { Value = estadoNormalizado },
                 new SqlParameter("@ModificadoPor", SqlDbType.Int) { Value = DBNull.Value },
             },
             r => new SpResponse(
@@ -153,6 +176,17 @@ public sealed class UsuariosController : ControllerBase
         return FromSpResponse(rows.FirstOrDefault());
     }
 
+    private static string? ResolveEstado(CambiarEstadoRequest req)
+    {
+        if (!string.IsNullOrWhiteSpace(req.Estado))
+            return req.Estado.Trim().ToUpperInvariant();
+
+        if (req.Activo.HasValue)
+            return req.Activo.Value ? "ACTIVO" : "INACTIVO";
+
+        return null;
+    }
+
     private IActionResult FromSpResponse(SpResponse? result)
     {
         if (result is null)
@@ -240,6 +274,11 @@ public sealed class UsuariosController : ControllerBase
     private sealed record SpResponse(int HttpStatus, string Codigo, string Mensaje);
 }
 
-public sealed record CambiarEstadoRequest(string Estado);
+public sealed class CambiarEstadoRequest
+{
+    public string? Estado { get; init; }
+    public bool? Activo { get; init; }
+}
+
 public sealed record RolRequest(string Rol);
 public sealed record RestablecerPasswordRequest(string NuevaPassword, bool RequiereCambio = true);

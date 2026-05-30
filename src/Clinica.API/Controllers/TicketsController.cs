@@ -70,6 +70,20 @@ public sealed class TicketsController(ITicketsService service) : ControllerBase
         return Ok(ApiResponse<TicketDto>.Success(ticket));
     }
 
+
+
+    // ─── GET /api/tickets/seguimiento-paciente ──────────────────────────────
+
+    [HttpGet("seguimiento-paciente")]
+    public async Task<IActionResult> SeguimientoPaciente(
+        [FromQuery] long pacienteId,
+        [FromQuery] int top,
+        CancellationToken ct)
+    {
+        var seguimiento = await service.ObtenerSeguimientoPacienteAsync(pacienteId, top <= 0 ? 5 : top, ct);
+        return Ok(ApiResponse<List<TicketSeguimientoPacienteDto>>.Success(seguimiento));
+    }
+
     // ─── POST /api/tickets/generar ──────────────────────────────────────────
 
     [HttpPost("generar")]

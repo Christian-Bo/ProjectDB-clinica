@@ -117,3 +117,54 @@ public sealed record ResumenOperativoDto
     public string? UltimoTicketLlamado  { get; init; }
     public DateTime ConsultadoEnUtc     { get; init; } = DateTime.UtcNow;
 }
+
+
+// ── Seguimiento visible para portal del paciente ───────────────────────────
+
+public sealed record TicketSeguimientoPasoDto
+{
+    public long   TicketId      { get; init; }
+    public int    Orden         { get; init; }
+    public string Codigo        { get; init; } = string.Empty;
+    public string Titulo        { get; init; } = string.Empty;
+    public string Descripcion   { get; init; } = string.Empty;
+    public string Estado        { get; init; } = "PENDIENTE";
+    public DateTime? Fecha      { get; init; }
+    public string? Lugar        { get; init; }
+    public string? Responsable  { get; init; }
+    public string? Ayuda        { get; init; }
+}
+
+public sealed record TicketSeguimientoPacienteDto
+{
+    public long    TicketId              { get; init; }
+    public string  NumeroTicket          { get; init; } = string.Empty;
+    public string  Estado                { get; init; } = string.Empty;
+    public string  Prioridad             { get; init; } = string.Empty;
+    public bool    EsEspecial            { get; init; }
+    public long?   CitaId                { get; init; }
+    public string? CitaEstado            { get; init; }
+    public DateTime? FechaCita           { get; init; }
+    public long    PacienteId            { get; init; }
+    public string  PacienteNombre        { get; init; } = string.Empty;
+    public string? NumeroExpediente      { get; init; }
+    public int     SedeId                { get; init; }
+    public string  SedeNombre            { get; init; } = string.Empty;
+    public int     ServicioId            { get; init; }
+    public string  ServicioNombre        { get; init; } = string.Empty;
+    public string? EspecialidadNombre    { get; init; }
+    public string? VentanillaNombre      { get; init; }
+    public int?    MedicoId              { get; init; }
+    public string? MedicoNombre          { get; init; }
+    public int?    ConsultorioId         { get; init; }
+    public string? ConsultorioNombre     { get; init; }
+    public string? DestinoTipo           { get; init; }
+    public string? DestinoActual         { get; init; }
+    public string  EtapaActual           { get; init; } = string.Empty;
+    public DateTime  FechaGeneracion     { get; init; }
+    public DateTime? FechaLlamado        { get; init; }
+    public DateTime? FechaInicioAtencion { get; init; }
+    public DateTime? FechaFinAtencion    { get; init; }
+    public int     ContadorLlamados      { get; init; }
+    public List<TicketSeguimientoPasoDto> Pasos { get; init; } = [];
+}

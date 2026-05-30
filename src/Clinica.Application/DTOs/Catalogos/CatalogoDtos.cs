@@ -32,6 +32,8 @@ public sealed record CitaItemDto
     public string ServicioNombre { get; init; } = string.Empty;
     public string SedeNombre    { get; init; } = string.Empty;
     public string? MedicoNombre { get; init; }
+    public string? ConsultorioNombre { get; init; }
+    public string? EspecialidadNombre { get; init; }
 }
 
 public sealed record KioscoVentanillaDto

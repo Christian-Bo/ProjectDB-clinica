@@ -212,6 +212,46 @@ public sealed class TicketsRepository(SqlExecutor db)
         return MapTicket(dt.Rows[0]);
     }
 
+
+    // ─── Seguimiento del paciente ───────────────────────────────────────────
+
+    public async Task<List<TicketSeguimientoPacienteDto>> ObtenerSeguimientoPacienteAsync(
+        long pacienteId, int top, CancellationToken ct)
+    {
+        var parameters = new[]
+        {
+            Sql.BigInt("@PacienteId", pacienteId),
+            Sql.Int("@Top", top <= 0 ? 5 : top),
+        };
+
+        var ds = await db.ExecuteSpAsync("dbo.sp_Ticket_SeguimientoPaciente", parameters, ct);
+        var ticketsTable = ds.Tables.Count > 0 ? ds.Tables[0] : new DataTable();
+        var stepsTable = ds.Tables.Count > 1 ? ds.Tables[1] : new DataTable();
+
+        var tickets = ticketsTable.Rows
+            .Cast<DataRow>()
+            .Select(MapSeguimientoTicket)
+            .ToList();
+
+        var index = tickets.ToDictionary(t => t.TicketId);
+
+        foreach (DataRow row in stepsTable.Rows)
+        {
+            var ticketId = row.Int64("TicketId");
+            if (index.TryGetValue(ticketId, out var ticket))
+            {
+                ticket.Pasos.Add(MapSeguimientoPaso(row));
+            }
+        }
+
+        foreach (var ticket in tickets)
+        {
+            ticket.Pasos.Sort((a, b) => a.Orden.CompareTo(b.Orden));
+        }
+
+        return tickets;
+    }
+
     // ─── Resumen operativo ───────────────────────────────────────────────────
 
     public async Task<ResumenOperativoDto> ObtenerResumenOperativoAsync(
@@ -257,40 +297,97 @@ public sealed class TicketsRepository(SqlExecutor db)
 
     // ─── Mappers internos ────────────────────────────────────────────────────
 
+
+    private static TicketSeguimientoPacienteDto MapSeguimientoTicket(DataRow row) => new()
+    {
+        TicketId              = row.Int64("TicketId"),
+        NumeroTicket          = row.Str("NumeroTicket"),
+        Estado                = row.Str("Estado"),
+        Prioridad             = row.Str("Prioridad"),
+        EsEspecial            = row.Table.HasColumn("EsEspecial") && row.Bool("EsEspecial"),
+        CitaId                = row.Table.HasColumn("CitaId") ? row.Int64Null("CitaId") : null,
+        CitaEstado            = row.Table.HasColumn("CitaEstado") ? row.StrNull("CitaEstado") : null,
+        FechaCita             = row.Table.HasColumn("FechaCita") ? row.DateTimeNull("FechaCita") : null,
+        PacienteId            = row.Int64("PacienteId"),
+        PacienteNombre        = row.Str("PacienteNombre"),
+        NumeroExpediente      = row.Table.HasColumn("NumeroExpediente") ? row.StrNull("NumeroExpediente") : null,
+        SedeId                = row.Int32("SedeId"),
+        SedeNombre            = row.Str("SedeNombre"),
+        ServicioId            = row.Int32("ServicioId"),
+        ServicioNombre        = row.Str("ServicioNombre"),
+        EspecialidadNombre    = row.Table.HasColumn("EspecialidadNombre") ? row.StrNull("EspecialidadNombre") : null,
+        VentanillaNombre      = row.Table.HasColumn("VentanillaNombre") ? row.StrNull("VentanillaNombre") : null,
+        MedicoId              = row.Table.HasColumn("MedicoId") ? row.Int32Null("MedicoId") : null,
+        MedicoNombre          = row.Table.HasColumn("MedicoNombre") ? row.StrNull("MedicoNombre") : null,
+        ConsultorioId         = row.Table.HasColumn("ConsultorioId") ? row.Int32Null("ConsultorioId") : null,
+        ConsultorioNombre     = row.Table.HasColumn("ConsultorioNombre") ? row.StrNull("ConsultorioNombre") : null,
+        DestinoTipo           = row.Table.HasColumn("DestinoTipo") ? row.StrNull("DestinoTipo") : null,
+        DestinoActual         = row.Table.HasColumn("DestinoActual") ? row.StrNull("DestinoActual") : null,
+        EtapaActual           = row.Table.HasColumn("EtapaActual") ? row.Str("EtapaActual") : string.Empty,
+        FechaGeneracion       = row.DateTime("FechaGeneracion"),
+        FechaLlamado          = row.DateTimeNull("FechaLlamado"),
+        FechaInicioAtencion   = row.DateTimeNull("FechaInicioAtencion"),
+        FechaFinAtencion      = row.DateTimeNull("FechaFinAtencion"),
+        ContadorLlamados      = row.Int32("ContadorLlamados"),
+    };
+
+    private static TicketSeguimientoPasoDto MapSeguimientoPaso(DataRow row) => new()
+    {
+        TicketId     = row.Int64("TicketId"),
+        Orden        = row.Int32("Orden"),
+        Codigo       = row.Str("Codigo"),
+        Titulo       = row.Str("Titulo"),
+        Descripcion  = row.Str("Descripcion"),
+        Estado       = row.Str("Estado"),
+        Fecha        = row.Table.HasColumn("Fecha") ? row.DateTimeNull("Fecha") : null,
+        Lugar        = row.Table.HasColumn("Lugar") ? row.StrNull("Lugar") : null,
+        Responsable  = row.Table.HasColumn("Responsable") ? row.StrNull("Responsable") : null,
+        Ayuda        = row.Table.HasColumn("Ayuda") ? row.StrNull("Ayuda") : null,
+    };
+
     private static TicketDto MapTicketFromDataSet(DataSet ds, string spName)
     {
-        DataTable? ticketTable = null;
-
-        foreach (DataTable t in ds.Tables)
+        DataTable? statusTable = null;
+        foreach (DataTable table in ds.Tables)
         {
-            if (t.HasColumn("TicketId") || t.HasColumn("ticketId"))
+            if (table.Rows.Count > 0 && (table.HasColumn("HttpStatus") || table.HasColumn("StatusCode")))
             {
-                ticketTable = t;
+                statusTable = table;
                 break;
             }
         }
 
-        if (ticketTable is null)
+        if (statusTable is not null)
         {
-            if (ds.Tables.Count > 0)
+            var statusRow = statusTable.Rows[0];
+            var statusColumn = statusTable.HasColumn("HttpStatus") ? "HttpStatus" : "StatusCode";
+            int httpStatus = statusRow.Int32(statusColumn);
+            string code = statusTable.HasColumn("Code")
+                ? statusRow.Str("Code")
+                : statusTable.HasColumn("Codigo")
+                    ? statusRow.Str("Codigo")
+                    : "OPERACION_TICKET";
+            string message = statusTable.HasColumn("Message")
+                ? statusRow.Str("Message")
+                : statusTable.HasColumn("Mensaje")
+                    ? statusRow.Str("Mensaje")
+                    : "La operacion de ticket no pudo completarse.";
+
+            if (httpStatus == 409)
+                throw new ConflictException(message, code);
+            if (httpStatus is >= 400 and < 500)
+                throw new BusinessException(message, code);
+            if (httpStatus >= 500)
+                throw new InvalidOperationException(message);
+        }
+
+        DataTable? ticketTable = null;
+        foreach (DataTable table in ds.Tables)
+        {
+            if (table.HasColumn("TicketId") || table.HasColumn("ticketId"))
             {
-                var statusTable = ds.Tables[0];
-                if (statusTable.Rows.Count > 0 && statusTable.HasColumn("HttpStatus"))
-                {
-                    var statusRow  = statusTable.Rows[0];
-                    int httpStatus = statusRow.Int32("HttpStatus");
-                    string code    = statusTable.HasColumn("Code") ? statusRow.Str("Code") : statusRow.Str("Codigo");
-                    string message = statusTable.HasColumn("Message") ? statusRow.Str("Message") : statusRow.Str("Mensaje");
-
-                    if (httpStatus == 409)
-                        throw new ConflictException(message, code);
-                    if (httpStatus is >= 400 and < 500)
-                        throw new BusinessException(message, code);
-                    if (httpStatus >= 500)
-                        throw new InvalidOperationException(message);
-                }
-
-                ticketTable = ds.Tables.Count > 1 ? ds.Tables[1] : ds.Tables[0];
+                ticketTable = table;
+                break;
             }
         }
 

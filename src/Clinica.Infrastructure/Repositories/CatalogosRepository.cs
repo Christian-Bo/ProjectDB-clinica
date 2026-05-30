@@ -194,5 +194,7 @@ public sealed class CatalogosRepository(SqlExecutor db)
         ServicioNombre = row.Str("ServicioNombre"),
         SedeNombre     = row.Str("SedeNombre"),
         MedicoNombre   = row.StrNull("MedicoNombre"),
+        ConsultorioNombre = row.Table.HasColumn("ConsultorioNombre") ? row.StrNull("ConsultorioNombre") : null,
+        EspecialidadNombre = row.Table.HasColumn("EspecialidadNombre") ? row.StrNull("EspecialidadNombre") : null,
     };
 }

@@ -19,6 +19,7 @@ public interface ITicketsService
     Task<TicketDto> ObtenerTicketAsync(long ticketId, CancellationToken ct = default);
     Task<TicketDto> ObtenerTicketPorNumeroAsync(string numeroTicket, CancellationToken ct = default);
     Task<TicketDto> ObtenerMiTicketAsync(long? ticketId, string? numeroTicket, CancellationToken ct = default);
+    Task<List<TicketSeguimientoPacienteDto>> ObtenerSeguimientoPacienteAsync(long pacienteId, int top = 5, CancellationToken ct = default);
     Task<ResumenOperativoDto> ObtenerResumenOperativoAsync(int? sedeId, int? servicioId, CancellationToken ct = default);
 }
 
